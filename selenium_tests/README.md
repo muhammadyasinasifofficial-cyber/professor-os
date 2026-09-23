@@ -21,7 +21,7 @@ python -m pytest -v selenium_tests/tests/test_smoke.py
 Authenticated admin and course-management tests use credentials from environment variables. They are skipped when credentials are not set:
 
 ```powershell
-$env:APP_URL = "https://professor-os-production.up.railway.app"
+$env:APP_URL = "https://professor-os-production-65b2.up.railway.app"
 $env:ADMIN_EMAIL = "your-admin-email"
 $env:ADMIN_PASSWORD = "your-admin-password"
 python -m pytest -v selenium_tests/tests

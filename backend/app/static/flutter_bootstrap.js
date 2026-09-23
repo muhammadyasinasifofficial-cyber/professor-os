@@ -11,13 +11,6 @@ _flutter.buildConfig = {"engineRevision":"36335019a8eab588c3c2ea783c618d90505be2
 
 _flutter.loader.load({
   serviceWorkerSettings: {
-    serviceWorkerVersion: "2284321191"
-  },
-  onEntrypointLoaded: function (engineInitializer) {
-    engineInitializer.initializeEngine().then(function (appRunner) {
-      appRunner.runApp();
-    }).catch(function (error) {
-      console.error("Flutter application failed to start", error);
-    });
+    serviceWorkerVersion: "3423532652"
   }
 });

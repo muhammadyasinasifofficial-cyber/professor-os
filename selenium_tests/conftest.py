@@ -6,7 +6,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
 
-DEFAULT_APP_URL = "https://professor-os-production.up.railway.app"
+DEFAULT_APP_URL = "https://professor-os-production-65b2.up.railway.app"
 
 
 @pytest.fixture

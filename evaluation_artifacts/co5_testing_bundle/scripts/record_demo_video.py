@@ -5,7 +5,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parents[3]
 OUT_VIDEOS = ROOT / 'evaluation_artifacts' / 'co5_testing_bundle' / 'outputs' / 'videos'
 OUT_SHOTS = ROOT / 'evaluation_artifacts' / 'co5_testing_bundle' / 'outputs' / 'screenshots'
-URL = 'https://professor-os-production.up.railway.app'
+URL = 'https://professor-os-production-65b2.up.railway.app'
 
 
 def finalize_video(video_path: str, target_name: str) -> Path:

@@ -4,7 +4,7 @@ import asyncio
 async def test():
     async with httpx.AsyncClient() as client:
         # Check OpenAPI schema to see available endpoints
-        res = await client.get('https://professor-os-production.up.railway.app/openapi.json')
+        res = await client.get('https://professor-os-production-65b2.up.railway.app/openapi.json')
         if res.status_code == 200:
             data = res.json()
             paths = data.get('paths', {})

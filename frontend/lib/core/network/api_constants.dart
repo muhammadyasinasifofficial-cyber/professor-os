@@ -1,14 +1,29 @@
 /// ProfessorOS – API constants.
 
+import 'package:flutter/foundation.dart';
+
 class ApiConstants {
   ApiConstants._();
 
-  // Override for Android/web deployments with:
+  // Override for Android and explicitly configured deployments with:
   // --dart-define=API_BASE_URL=https://your-api.example.com/api/v1
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://localhost:8000/api/v1',
-  );
+  static String get baseUrl => resolveBaseUrl(
+        configured: const String.fromEnvironment('API_BASE_URL'),
+        isWeb: kIsWeb,
+        webOrigin: kIsWeb ? Uri.base.origin : null,
+      );
+
+  static String resolveBaseUrl({
+    required String configured,
+    required bool isWeb,
+    String? webOrigin,
+  }) {
+    if (configured.isNotEmpty) return configured;
+    if (isWeb && webOrigin != null && webOrigin.isNotEmpty) {
+      return '$webOrigin/api/v1';
+    }
+    return 'http://localhost:8000/api/v1';
+  }
 
   // ── Auth ───────────────────────────────────────────
   static const String login = '/auth/login';

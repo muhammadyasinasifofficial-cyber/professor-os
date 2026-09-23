@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     BACKEND_URL: str = "http://localhost:8000"
     FRONTEND_URL: str = "http://localhost:8080"
-    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8080,http://127.0.0.1:8080,https://professor-os-production.up.railway.app"
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8080,http://127.0.0.1:8080,https://professor-os-production-65b2.up.railway.app"
 
     # ── Database (PostgreSQL with asyncpg) ───────────────────────────────
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/professor_os"

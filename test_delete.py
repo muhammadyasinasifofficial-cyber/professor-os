@@ -5,7 +5,7 @@ async def test():
     async with httpx.AsyncClient() as client:
         # Login first
         res = await client.post(
-            'https://professor-os-production.up.railway.app/api/v1/auth/login',
+            'https://professor-os-production-65b2.up.railway.app/api/v1/auth/login',
             json={'email': 'admin@professoros.edu.pk', 'password': 'admin123'}
         )
         token = res.json()['access_token']
@@ -21,7 +21,7 @@ async def test():
             'deadline': '2025-12-31T23:59:59'
         }
         res = await client.post(
-            f'https://professor-os-production.up.railway.app/api/v1/courses/{course_id}/assignments',
+            f'https://professor-os-production-65b2.up.railway.app/api/v1/courses/{course_id}/assignments',
             json=payload,
             headers=headers
         )
@@ -32,7 +32,7 @@ async def test():
             
             # Try to delete it
             res = await client.delete(
-                f'https://professor-os-production.up.railway.app/api/v1/courses/{course_id}/assignments/{aid}',
+                f'https://professor-os-production-65b2.up.railway.app/api/v1/courses/{course_id}/assignments/{aid}',
                 headers=headers
             )
             print(f'Delete status: {res.status_code}')
