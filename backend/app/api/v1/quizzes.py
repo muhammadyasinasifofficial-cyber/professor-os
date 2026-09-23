@@ -7,6 +7,7 @@ Hardened with Cloudflare Security Audit Principles:
   - Role-based authorization across all endpoints
 """
 
+import base64
 import os
 import random
 import re
@@ -14,6 +15,7 @@ import shutil
 import tempfile
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from decimal import Decimal
 from typing import Annotated, Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
@@ -23,6 +25,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, require_roles
+from app.core.config import get_settings
 from app.db.base import get_db
 from app.models.user import User
 from app.models.course import Course
@@ -54,6 +57,7 @@ router = APIRouter(tags=["AI Assessments & OBE Quizzes"])
 
 # Maximum allowable upload size: 25 MB
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+settings = get_settings()
 
 
 # ── Schemas ──────────────────────────────────────────────────────────
@@ -215,7 +219,7 @@ async def ingest_course_material(
         )
 
     # Save to storage directory with bounded streaming to prevent memory/disk exhaustion
-    upload_dir = os.path.abspath(os.path.join("./data", "uploads", f"course_{course_id}"))
+    upload_dir = os.path.abspath(os.path.join(settings.STORAGE_ROOT, "uploads", f"course_{course_id}"))
     os.makedirs(upload_dir, exist_ok=True)
 
     material_id = str(uuid.uuid4())
@@ -246,6 +250,7 @@ async def ingest_course_material(
         file_path=os.path.abspath(saved_path),
         filename=safe_name,
         material_id=material_id,
+        file_data_b64=base64.b64encode(Path(saved_path).read_bytes()).decode("ascii"),
     )
 
     return {
@@ -1009,7 +1014,7 @@ async def get_hec_course_dossier(
     from app.services.hec_dossier import build_dossier_pdf
 
     clean_sem = semester.replace(" ", "_")
-    dossier_dir = os.path.abspath("./data/dossiers")
+    dossier_dir = os.path.abspath(os.path.join(settings.STORAGE_ROOT, "dossiers"))
     pdf_path = os.path.join(dossier_dir, f"course_{course_id}_{clean_sem}.pdf")
 
     try:

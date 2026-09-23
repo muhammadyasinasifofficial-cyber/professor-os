@@ -381,10 +381,9 @@ async def chat_with_course(
             temperature=0.2,
         )
     except Exception as e:
-        reply_text = (
-            f"I apologize, but I encountered an issue processing your query through the AI service: {e}. "
-            "Please try again in a moment."
-        )
+        import logging
+        logging.getLogger("professor_os.chat").exception("Course chat failed", exc_info=e)
+        reply_text = "I couldn't process that question right now. Please try again in a moment."
 
     return CourseChatResponse(
         response=reply_text,

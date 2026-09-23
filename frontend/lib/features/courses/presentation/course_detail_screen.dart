@@ -40,6 +40,121 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen>
     super.dispose();
   }
 
+  Future<void> _uploadCourseMaterial() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'pptx', 'docx', 'txt', 'md'],
+      withData: true,
+    );
+    final file = result?.files.single;
+    if (file == null || file.bytes == null) return;
+    if (file.size > 25 * 1024 * 1024) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Material exceeds the 25 MB limit.'),
+          backgroundColor: AppColors.dangerRose,
+        ));
+      }
+      return;
+    }
+    try {
+      final response = await CourseRepository().ingestCourseMaterial(
+        widget.courseId,
+        file.bytes!.toList(),
+        file.name,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(response['message']?.toString() ??
+              'Material queued for AI indexing.'),
+          backgroundColor: AppColors.successGreen,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(ErrorParser.parse(e)),
+          backgroundColor: AppColors.dangerRose,
+        ));
+      }
+    }
+  }
+
+  Future<void> _showCourseChat() async {
+    final controller = TextEditingController();
+    var loading = false;
+    var answer = '';
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Ask Course AI'),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: controller,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Question',
+                    hintText: 'Ask about the uploaded course material...',
+                  ),
+                ),
+                if (answer.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    color: AppColors.bgPage,
+                    child: Text(answer),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: loading ? null : () => Navigator.pop(dialogContext),
+              child: const Text('Close'),
+            ),
+            FilledButton(
+              onPressed: loading
+                  ? null
+                  : () async {
+                      final message = controller.text.trim();
+                      if (message.isEmpty) return;
+                      setState(() => loading = true);
+                      try {
+                        final response = await CourseRepository()
+                            .chatWithCourse(widget.courseId, message);
+                        setState(() {
+                          answer = response['response']?.toString() ??
+                              'No answer returned.';
+                          loading = false;
+                        });
+                      } catch (e) {
+                        setState(() {
+                          answer = ErrorParser.parse(e);
+                          loading = false;
+                        });
+                      }
+                    },
+              child: loading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('Ask'),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.sizeOf(context).width < 600;
@@ -73,7 +188,17 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen>
           error: (_, __) => const Text('Course Details'),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Ask Course AI',
+            icon: const Icon(Icons.chat_bubble_outline_rounded),
+            onPressed: _showCourseChat,
+          ),
           if (isProf) ...[
+            IconButton(
+              tooltip: 'Upload course material',
+              icon: const Icon(Icons.upload_file_rounded),
+              onPressed: _uploadCourseMaterial,
+            ),
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: OutlinedButton.icon(
@@ -178,8 +303,8 @@ class _AssignmentsTab extends ConsumerWidget {
     }
   }
 
-  Future<void> _showAssignTADialog(
-      BuildContext context, WidgetRef ref, int assignmentId, String title) async {
+  Future<void> _showAssignTADialog(BuildContext context, WidgetRef ref,
+      int assignmentId, String title) async {
     try {
       final repo = CourseRepository();
       final roster = await repo.listEnrollments(courseId);
@@ -199,7 +324,8 @@ class _AssignmentsTab extends ConsumerWidget {
             content: SizedBox(
               width: 420,
               child: tas.isEmpty
-                  ? const Text('Enroll at least one user as a TA in this course first.')
+                  ? const Text(
+                      'Enroll at least one user as a TA in this course first.')
                   : ListView(
                       shrinkWrap: true,
                       children: tas.map((ta) {
@@ -220,9 +346,13 @@ class _AssignmentsTab extends ConsumerWidget {
                     ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel')),
               if (tas.isNotEmpty)
-                FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
+                FilledButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('Save')),
             ],
           ),
         ),
@@ -335,8 +465,8 @@ class _AssignmentsTab extends ConsumerWidget {
                           icon: const Icon(Icons.group_add_rounded,
                               color: AppColors.primaryIndigo, size: 20),
                           tooltip: 'Assign Teaching Assistant',
-                          onPressed: () => _showAssignTADialog(
-                              context, ref, a['id'] as int, a['title'] as String),
+                          onPressed: () => _showAssignTADialog(context, ref,
+                              a['id'] as int, a['title'] as String),
                         ),
                         if (status == 'draft')
                           Padding(

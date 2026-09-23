@@ -14,7 +14,7 @@ import '../../../shared/widgets/marginalia_strip.dart';
 import '../data/course_repository.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'exam_screen.dart';
-
+import '../utils/mcq_parser.dart';
 
 final rubricProvider =
     FutureProvider.family<Map<String, dynamic>?, int>((ref, aid) async {
@@ -57,7 +57,8 @@ class _AssignmentDetailScreenState
   int? _mcqSelectedValue;
 
   void _openGradingDialog(Map<String, dynamic> sub) {
-    final scoreCtrl = TextEditingController(text: sub['score']?.toString() ?? '');
+    final scoreCtrl =
+        TextEditingController(text: sub['score']?.toString() ?? '');
     final feedbackCtrl = TextEditingController(text: sub['feedback'] ?? '');
     final formKey = GlobalKey<FormState>();
     bool saving = false;
@@ -76,7 +77,10 @@ class _AssignmentDetailScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Submitted Work:',
-                      style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.textMuted)),
+                      style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: AppColors.textMuted)),
                   const SizedBox(height: 8),
                   Container(
                     width: double.infinity,
@@ -89,22 +93,32 @@ class _AssignmentDetailScreenState
                     child: sub['submission_type'] == 'programming'
                         ? Text(
                             sub['content'] ?? '',
-                            style: GoogleFonts.jetBrainsMono(fontSize: 12, color: AppColors.inkPrimary),
+                            style: GoogleFonts.jetBrainsMono(
+                                fontSize: 12, color: AppColors.inkPrimary),
                           )
                         : sub['submission_type'] == 'file'
                             ? Row(
                                 children: [
-                                  const Icon(Icons.insert_drive_file, color: AppColors.signal, size: 20),
+                                  const Icon(Icons.insert_drive_file,
+                                      color: AppColors.signal, size: 20),
                                   const SizedBox(width: 8),
                                   Expanded(
-                                    child: Text(sub['file_name'] ?? sub['content'] ?? 'Uploaded file',
-                                        style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+                                    child: Text(
+                                        sub['file_name'] ??
+                                            sub['content'] ??
+                                            'Uploaded file',
+                                        style: GoogleFonts.inter(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600)),
                                   ),
                                 ],
                               )
                             : Text(
                                 sub['content'] ?? '',
-                                style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                                style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    color: AppColors.textSecondary,
+                                    height: 1.4),
                               ),
                   ),
                   const SizedBox(height: 20),
@@ -112,16 +126,21 @@ class _AssignmentDetailScreenState
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: scoreCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     decoration: InputDecoration(
-                      labelText: 'Score / Points (max ${_assignment?['max_marks']?.toStringAsFixed(0) ?? '100'})',
+                      labelText:
+                          'Score / Points (max ${_assignment?['max_marks']?.toStringAsFixed(0) ?? '100'})',
                       hintText: 'e.g. 85.5',
                     ),
                     validator: (v) {
                       if (v == null || v.isEmpty) return 'Score is required';
                       final val = double.tryParse(v);
-                      final max = (_assignment?['max_marks'] as num?)?.toDouble() ?? 100.0;
-                      if (val == null || val < 0 || val > max) return 'Must be between 0 and $max';
+                      final max =
+                          (_assignment?['max_marks'] as num?)?.toDouble() ??
+                              100.0;
+                      if (val == null || val < 0 || val > max)
+                        return 'Must be between 0 and $max';
                       return null;
                     },
                   ),
@@ -152,14 +171,19 @@ class _AssignmentDetailScreenState
                       try {
                         final sid = sub['id'] as int;
                         final score = double.parse(scoreCtrl.text);
-                        final feedback = feedbackCtrl.text.trim().isEmpty ? null : feedbackCtrl.text.trim();
-                        await CourseRepository().gradeSubmission(sid, score, feedback);
+                        final feedback = feedbackCtrl.text.trim().isEmpty
+                            ? null
+                            : feedbackCtrl.text.trim();
+                        await CourseRepository()
+                            .gradeSubmission(sid, score, feedback);
                         if (mounted) {
                           Navigator.pop(ctx);
                           // Refresh submission list
                           await _loadSubmissions();
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                            content: Text('✓ Grade saved and analytics updated.'),
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(const SnackBar(
+                            content:
+                                Text('✓ Grade saved and analytics updated.'),
                             backgroundColor: AppColors.successGreen,
                           ));
                         }
@@ -173,9 +197,14 @@ class _AssignmentDetailScreenState
                         }
                       }
                     },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.signal),
+              style:
+                  ElevatedButton.styleFrom(backgroundColor: AppColors.signal),
               child: saving
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
                   : const Text('Save Grade'),
             ),
           ],
@@ -183,7 +212,6 @@ class _AssignmentDetailScreenState
       ),
     );
   }
-
 
   @override
   void initState() {
@@ -209,15 +237,18 @@ class _AssignmentDetailScreenState
   }
 
   Future<void> _loadSubmissions() async {
-    final role = ref.read(authProvider).valueOrNull?['role'] as String? ?? 'student';
+    final role =
+        ref.read(authProvider).valueOrNull?['role'] as String? ?? 'student';
     final isProf = role == 'professor' || role == 'admin' || role == 'ta';
     try {
       if (isProf) {
         setState(() => _submissionsLoading = true);
-        final res = await CourseRepository().listSubmissions(widget.courseId, widget.assignmentId);
+        final res = await CourseRepository()
+            .listSubmissions(widget.courseId, widget.assignmentId);
         if (mounted) {
           setState(() {
-            _submissions = (res['submissions'] as List<dynamic>).cast<Map<String, dynamic>>();
+            _submissions = (res['submissions'] as List<dynamic>)
+                .cast<Map<String, dynamic>>();
             _pendingCount = res['pending_count'] as int? ?? 0;
             _gradedCount = res['graded_count'] as int? ?? 0;
             _submissionsLoading = false;
@@ -226,14 +257,22 @@ class _AssignmentDetailScreenState
       } else {
         // Student: fetch own submission
         setState(() => _submissionLoading = true);
-        final mySub = await CourseRepository().getMySubmission(widget.courseId, widget.assignmentId);
-        if (mounted) setState(() { _mySubmission = mySub; _submissionLoading = false; });
+        final mySub = await CourseRepository()
+            .getMySubmission(widget.courseId, widget.assignmentId);
+        if (mounted)
+          setState(() {
+            _mySubmission = mySub;
+            _submissionLoading = false;
+          });
       }
     } catch (e) {
-      if (mounted) setState(() { _submissionsLoading = false; _submissionLoading = false; });
+      if (mounted)
+        setState(() {
+          _submissionsLoading = false;
+          _submissionLoading = false;
+        });
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -321,9 +360,16 @@ class _AssignmentDetailScreenState
               Builder(
                 builder: (context) {
                   final totalCount = _submissions.length;
-                  final pendingCount = _submissions.where((s) => s['status'] == 'pending').length;
-                  final gradedCount = _submissions.where((s) => s['status'] == 'graded').length;
-                  final gradedScores = _submissions.where((s) => s['status'] == 'graded' && s['score'] != null).map((s) => s['score'] as double).toList();
+                  final pendingCount = _submissions
+                      .where((s) => s['status'] == 'pending')
+                      .length;
+                  final gradedCount =
+                      _submissions.where((s) => s['status'] == 'graded').length;
+                  final gradedScores = _submissions
+                      .where(
+                          (s) => s['status'] == 'graded' && s['score'] != null)
+                      .map((s) => s['score'] as double)
+                      .toList();
                   final avgScoreStr = gradedScores.isNotEmpty
                       ? '${(gradedScores.reduce((a, b) => a + b) / gradedScores.length).toStringAsFixed(1)}%'
                       : '0.0%';
@@ -335,23 +381,19 @@ class _AssignmentDetailScreenState
                       SizedBox(
                           width: 200,
                           child: ProfStatCard(
-                              value: '$totalCount/180',
-                              label: 'Submissions')),
+                              value: '$totalCount/180', label: 'Submissions')),
                       SizedBox(
                           width: 200,
                           child: ProfStatCard(
-                              value: '$pendingCount',
-                              label: 'Pending Review')),
+                              value: '$pendingCount', label: 'Pending Review')),
                       SizedBox(
                           width: 200,
                           child: ProfStatCard(
-                              value: '$gradedCount',
-                              label: 'Graded')),
+                              value: '$gradedCount', label: 'Graded')),
                       SizedBox(
                           width: 200,
                           child: ProfStatCard(
-                              value: avgScoreStr,
-                              label: 'Average Score')),
+                              value: avgScoreStr, label: 'Average Score')),
                     ],
                   );
                 },
@@ -362,7 +404,8 @@ class _AssignmentDetailScreenState
             // Submissions & Rubric (Side by Side on desktop)
             LayoutBuilder(
               builder: (ctx, constraints) {
-                final studentEmail = ref.watch(authProvider).valueOrNull?['email'] ?? '';
+                final studentEmail =
+                    ref.watch(authProvider).valueOrNull?['email'] ?? '';
                 final submissionWidget = isProf
                     ? _buildSubmissionsList()
                     : _buildStudentSubmissionView(studentEmail);
@@ -502,8 +545,12 @@ class _AssignmentDetailScreenState
                     child: Container(
                       decoration: BoxDecoration(
                         border: Border(
-                          top: index == 0 ? const BorderSide(color: AppColors.marginRule, width: 1) : BorderSide.none,
-                          bottom: const BorderSide(color: AppColors.marginRule, width: 1),
+                          top: index == 0
+                              ? const BorderSide(
+                                  color: AppColors.marginRule, width: 1)
+                              : BorderSide.none,
+                          bottom: const BorderSide(
+                              color: AppColors.marginRule, width: 1),
                         ),
                       ),
                       child: Row(
@@ -511,14 +558,18 @@ class _AssignmentDetailScreenState
                         children: [
                           Expanded(
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 20, horizontal: 16),
                               child: Row(
                                 children: [
                                   CircleAvatar(
                                     radius: 20,
                                     backgroundColor: AppColors.bgSurface,
                                     child: Text(
-                                      sub['student_name'].split(' ').map((n) => n[0]).join(),
+                                      sub['student_name']
+                                          .split(' ')
+                                          .map((n) => n[0])
+                                          .join(),
                                       style: GoogleFonts.inter(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,
@@ -529,8 +580,10 @@ class _AssignmentDetailScreenState
                                   const SizedBox(width: 14),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         Text(sub['student_name'],
                                             style: GoogleFonts.inter(
@@ -539,7 +592,8 @@ class _AssignmentDetailScreenState
                                                 color: AppColors.inkPrimary)),
                                         Text(sub['student_email'],
                                             style: GoogleFonts.inter(
-                                                fontSize: 12, color: AppColors.inkSecondary)),
+                                                fontSize: 12,
+                                                color: AppColors.inkSecondary)),
                                       ],
                                     ),
                                   ),
@@ -547,14 +601,54 @@ class _AssignmentDetailScreenState
                                       style: GoogleFonts.jetBrainsMono(
                                           fontSize: 12,
                                           color: AppColors.inkSecondary)),
+                                  IconButton(
+                                    tooltip: 'AI grade submission',
+                                    icon: const Icon(Icons.auto_awesome,
+                                        color: AppColors.primaryIndigo,
+                                        size: 20),
+                                    onPressed: () async {
+                                      try {
+                                        final result = await CourseRepository()
+                                            .aiGradeSubmission(
+                                                sub['id'] as int);
+                                        if (!mounted) return;
+                                        final queued =
+                                            result['status'] == 'queued';
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(queued
+                                                ? 'AI grading queued. Refresh shortly for the result.'
+                                                : 'AI grading completed.'),
+                                            backgroundColor:
+                                                AppColors.successGreen,
+                                          ),
+                                        );
+                                        if (!queued) await _loadSubmissions();
+                                      } catch (e) {
+                                        if (!mounted) return;
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(ErrorParser.parse(e)),
+                                            backgroundColor:
+                                                AppColors.dangerRose,
+                                          ),
+                                        );
+                                      }
+                                    },
+                                  ),
                                 ],
                               ),
                             ),
                           ),
                           MarginaliaStrip(
                             statusLabel: isGraded ? 'Graded' : 'Pending',
-                            statusColor: isGraded ? AppColors.feedbackRed : AppColors.pending,
-                            score: sub['score'] != null ? '${sub['score']}' : '--',
+                            statusColor: isGraded
+                                ? AppColors.feedbackRed
+                                : AppColors.pending,
+                            score:
+                                sub['score'] != null ? '${sub['score']}' : '--',
                             grader: isGraded ? 'System' : null,
                           ),
                         ],
@@ -575,7 +669,8 @@ class _AssignmentDetailScreenState
 
     final hasSubmitted = sub.isNotEmpty;
     final isGraded = hasSubmitted && sub['status'] == 'graded';
-    final assignmentType = _assignment?['type']?.toString().toLowerCase() ?? 'text';
+    final assignmentType =
+        _assignment?['type']?.toString().toLowerCase() ?? 'text';
     final timeLimitMinutes = _assignment?['time_limit_minutes'] as int?;
     final isExamMode = timeLimitMinutes != null && timeLimitMinutes > 0;
 
@@ -584,36 +679,48 @@ class _AssignmentDetailScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Timed Exam', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w600)),
+            Text('Timed Exam',
+                style: GoogleFonts.outfit(
+                    fontSize: 20, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Text(
               'This is a timed exam ($timeLimitMinutes minutes). Once you start, the timer begins and the exam is fullscreen-locked.',
-              style: GoogleFonts.inter(color: AppColors.textSecondary, height: 1.5),
+              style: GoogleFonts.inter(
+                  color: AppColors.textSecondary, height: 1.5),
             ),
             const SizedBox(height: 20),
             ElevatedButton.icon(
               onPressed: () {
-                Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => ExamScreen(
-                    courseId: widget.courseId,
-                    assignmentId: widget.assignmentId,
-                    assignmentTitle: _assignment!['title'] ?? 'Exam',
-                    assignmentType: _assignment!['type'] ?? 'text',
-                    description: _assignment!['description'],
-                    maxMarks: (_assignment!['max_marks'] as num?)?.toDouble() ?? 100.0,
-                    timeLimitMinutes: timeLimitMinutes,
-                    randomizeQuestions: _assignment!['randomize_questions'] as bool? ?? false,
-                    showResultsAfter: _assignment!['show_results_after'] as bool? ?? true,
-                  ),
-                )).then((_) => _loadSubmissions());
+                Navigator.of(context)
+                    .push(MaterialPageRoute(
+                      builder: (_) => ExamScreen(
+                        courseId: widget.courseId,
+                        assignmentId: widget.assignmentId,
+                        assignmentTitle: _assignment!['title'] ?? 'Exam',
+                        assignmentType: _assignment!['type'] ?? 'text',
+                        description: _assignment!['description'],
+                        maxMarks:
+                            (_assignment!['max_marks'] as num?)?.toDouble() ??
+                                100.0,
+                        timeLimitMinutes: timeLimitMinutes,
+                        randomizeQuestions:
+                            _assignment!['randomize_questions'] as bool? ??
+                                false,
+                        showResultsAfter:
+                            _assignment!['show_results_after'] as bool? ?? true,
+                      ),
+                    ))
+                    .then((_) => _loadSubmissions());
               },
               icon: const Icon(Icons.play_arrow_rounded),
-              label: Text('Start Exam ($timeLimitMinutes min)', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+              label: Text('Start Exam ($timeLimitMinutes min)',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryIndigo,
                 foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 52),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ],
@@ -627,7 +734,9 @@ class _AssignmentDetailScreenState
         children: [
           Text('My Submission',
               style: GoogleFonts.outfit(
-                  fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary)),
           const SizedBox(height: 16),
           if (hasSubmitted) ...[
             Container(
@@ -648,7 +757,9 @@ class _AssignmentDetailScreenState
                         children: [
                           ProfBadge(
                             label: isGraded ? 'Graded' : 'Submitted (Latest)',
-                            color: isGraded ? AppColors.successGreen : AppColors.accentAmber,
+                            color: isGraded
+                                ? AppColors.successGreen
+                                : AppColors.accentAmber,
                           ),
                           if (sub['score'] != null)
                             ProfBadge(
@@ -659,13 +770,17 @@ class _AssignmentDetailScreenState
                       ),
                       Text(
                         'Submitted ${sub['submitted_at']}',
-                        style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted),
+                        style: GoogleFonts.inter(
+                            fontSize: 12, color: AppColors.textMuted),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   Text('Submitted Content:',
-                      style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.textMuted)),
+                      style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: AppColors.textMuted)),
                   const SizedBox(height: 6),
                   Container(
                     width: double.infinity,
@@ -678,11 +793,15 @@ class _AssignmentDetailScreenState
                     child: sub['submission_type'] == 'file'
                         ? Row(
                             children: [
-                              const Icon(Icons.insert_drive_file, color: AppColors.primaryIndigo, size: 20),
+                              const Icon(Icons.insert_drive_file,
+                                  color: AppColors.primaryIndigo, size: 20),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(sub['content'] ?? '',
-                                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                                    style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textPrimary)),
                               ),
                             ],
                           )
@@ -695,21 +814,32 @@ class _AssignmentDetailScreenState
                                 ),
                                 child: Text(
                                   sub['content'] ?? '',
-                                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Colors.black87),
+                                  style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                      fontSize: 12,
+                                      color: Colors.black87),
                                 ),
-                                )
+                              )
                             : Text(
                                 sub['content'] ?? '',
-                                style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                                style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    color: AppColors.textSecondary,
+                                    height: 1.4),
                               ),
                   ),
-                  if (isGraded && sub['feedback'] != null && sub['feedback'].toString().isNotEmpty) ...[
+                  if (isGraded &&
+                      sub['feedback'] != null &&
+                      sub['feedback'].toString().isNotEmpty) ...[
                     const SizedBox(height: 16),
                     const Divider(),
                     const SizedBox(height: 12),
                     Text(
                       'Instructor Feedback',
-                      style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                      style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary),
                     ),
                     const SizedBox(height: 6),
                     Container(
@@ -721,7 +851,11 @@ class _AssignmentDetailScreenState
                       ),
                       child: Text(
                         sub['feedback'],
-                        style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary, height: 1.5, fontStyle: FontStyle.italic),
+                        style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                            height: 1.5,
+                            fontStyle: FontStyle.italic),
                       ),
                     ),
                   ],
@@ -732,7 +866,8 @@ class _AssignmentDetailScreenState
                         _mySubmission = null;
                       });
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Re-opened submission form. Upload your updated work below.'),
+                        content: Text(
+                            'Re-opened submission form. Upload your updated work below.'),
                       ));
                     },
                     icon: const Icon(Icons.refresh, size: 16),
@@ -755,21 +890,37 @@ class _AssignmentDetailScreenState
                 children: [
                   if (assignmentType == 'file') ...[
                     Text('Upload PDF/ZIP Submission File',
-                        style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                        style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary)),
                     const SizedBox(height: 12),
                     InkWell(
                       onTap: () async {
                         final result = await FilePicker.platform.pickFiles(
                           type: FileType.custom,
-                          allowedExtensions: ['pdf', 'zip', 'docx', 'doc', 'txt', 'png', 'jpg', 'jpeg'],
+                          allowedExtensions: [
+                            'pdf',
+                            'zip',
+                            'docx',
+                            'doc',
+                            'txt',
+                            'png',
+                            'jpg',
+                            'jpeg'
+                          ],
                           withData: true,
                         );
-                        if (result != null && result.files.single.bytes != null) {
+                        if (result != null &&
+                            result.files.single.bytes != null) {
                           final file = result.files.single;
                           const maxBytes = 25 * 1024 * 1024; // 25 MB
                           if (file.size > maxBytes) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('File too large. Maximum allowed size is 25 MB.'), backgroundColor: Colors.red),
+                              const SnackBar(
+                                  content: Text(
+                                      'File too large. Maximum allowed size is 25 MB.'),
+                                  backgroundColor: Colors.red),
                             );
                             return;
                           }
@@ -780,23 +931,31 @@ class _AssignmentDetailScreenState
                         }
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 24, horizontal: 16),
                         decoration: BoxDecoration(
                           color: AppColors.bgSurface,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppColors.primaryIndigo.withOpacity(0.3), style: BorderStyle.solid),
+                          border: Border.all(
+                              color: AppColors.primaryIndigo.withOpacity(0.3),
+                              style: BorderStyle.solid),
                         ),
                         child: Column(
                           children: [
-                            const Icon(Icons.cloud_upload_outlined, size: 36, color: AppColors.primaryIndigo),
+                            const Icon(Icons.cloud_upload_outlined,
+                                size: 36, color: AppColors.primaryIndigo),
                             const SizedBox(height: 8),
                             Text(
                               _selectedFileName ?? 'Click to choose file...',
                               textAlign: TextAlign.center,
                               style: GoogleFonts.inter(
                                 fontSize: 13,
-                                fontWeight: _selectedFileName != null ? FontWeight.w600 : FontWeight.w400,
-                                color: _selectedFileName != null ? AppColors.textPrimary : AppColors.textMuted,
+                                fontWeight: _selectedFileName != null
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                color: _selectedFileName != null
+                                    ? AppColors.textPrimary
+                                    : AppColors.textMuted,
                               ),
                             ),
                           ],
@@ -805,7 +964,9 @@ class _AssignmentDetailScreenState
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: (_selectedFileName == null || _selectedFileBytes == null || _submissionLoading)
+                      onPressed: (_selectedFileName == null ||
+                              _selectedFileBytes == null ||
+                              _submissionLoading)
                           ? null
                           : () async {
                               setState(() => _submissionLoading = true);
@@ -817,40 +978,52 @@ class _AssignmentDetailScreenState
                                   _selectedFileName!,
                                 );
                                 if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                    content: Text('File submitted successfully!'),
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(const SnackBar(
+                                    content:
+                                        Text('File submitted successfully!'),
                                     backgroundColor: Colors.green,
                                   ));
-                                  setState(() { _selectedFileName = null; _selectedFileBytes = null; });
+                                  setState(() {
+                                    _selectedFileName = null;
+                                    _selectedFileBytes = null;
+                                  });
                                   await _loadSubmissions();
                                 }
                               } catch (e) {
                                 if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(SnackBar(
                                     content: Text(ErrorParser.parse(e)),
                                     backgroundColor: Colors.red,
                                   ));
                                 }
                               } finally {
-                                if (mounted) setState(() => _submissionLoading = false);
+                                if (mounted)
+                                  setState(() => _submissionLoading = false);
                               }
                             },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryIndigo,
                         foregroundColor: Colors.white,
                         minimumSize: const Size(double.infinity, 48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
                       ),
                       child: const Text('Submit Assignment'),
                     ),
                   ] else if (assignmentType == 'programming') ...[
                     Text('Paste Source Code Submission',
-                        style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                        style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary)),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _codeSubmissionCtrl,
                       maxLines: 8,
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+                      style: const TextStyle(
+                          fontFamily: 'monospace', fontSize: 13),
                       decoration: const InputDecoration(
                         hintText: 'e.g. def my_solution():\n    return True',
                         alignLabelWithHint: true,
@@ -858,122 +1031,168 @@ class _AssignmentDetailScreenState
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: _submissionLoading ? null : () async {
-                          final code = _codeSubmissionCtrl.text.trim();
-                          if (code.isEmpty) return;
-                          setState(() => _submissionLoading = true);
-                          try {
-                            await CourseRepository().submitAssignment(
-                              widget.courseId,
-                              widget.assignmentId,
-                              {'submission_type': 'programming', 'content': code},
-                            );
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                content: Text('Code submitted successfully!'),
-                                backgroundColor: Colors.green,
-                              ));
-                              _codeSubmissionCtrl.clear();
-                              await _loadSubmissions();
-                            }
-                          } catch (e) {
-                            if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text(ErrorParser.parse(e)), backgroundColor: Colors.red,
-                            ));
-                          } finally {
-                            if (mounted) setState(() => _submissionLoading = false);
-                          }
-                        },
+                      onPressed: _submissionLoading
+                          ? null
+                          : () async {
+                              final code = _codeSubmissionCtrl.text.trim();
+                              if (code.isEmpty) return;
+                              setState(() => _submissionLoading = true);
+                              try {
+                                await CourseRepository().submitAssignment(
+                                  widget.courseId,
+                                  widget.assignmentId,
+                                  {
+                                    'submission_type': 'programming',
+                                    'content': code
+                                  },
+                                );
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(const SnackBar(
+                                    content:
+                                        Text('Code submitted successfully!'),
+                                    backgroundColor: Colors.green,
+                                  ));
+                                  _codeSubmissionCtrl.clear();
+                                  await _loadSubmissions();
+                                }
+                              } catch (e) {
+                                if (mounted)
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(SnackBar(
+                                    content: Text(ErrorParser.parse(e)),
+                                    backgroundColor: Colors.red,
+                                  ));
+                              } finally {
+                                if (mounted)
+                                  setState(() => _submissionLoading = false);
+                              }
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryIndigo,
                         foregroundColor: Colors.white,
                         minimumSize: const Size(double.infinity, 48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
                       ),
                       child: const Text('Submit Code'),
                     ),
                   ] else if (assignmentType == 'mcq') ...[
-                    Text('Complete Multiple Choice Quiz',
-                        style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.bgSurface,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Column(
+                    Builder(builder: (context) {
+                      final questions = parseMcqDescription(
+                          _assignment?['description']?.toString());
+                      if (questions.isEmpty) {
+                        return const Text(
+                            'This quiz has no configured questions yet.');
+                      }
+                      final question = questions.first;
+                      final options = (question['options'] as List?)
+                              ?.map((option) => option.toString())
+                              .toList() ??
+                          const <String>[];
+                      return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Question: What is the primary purpose of Course Learning Outcomes (CLOs) in HEC compliance?',
-                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                          ),
+                          Text('Complete Multiple Choice Quiz',
+                              style: GoogleFonts.outfit(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary)),
                           const SizedBox(height: 12),
-                          RadioListTile<int>(
-                            title: const Text('A. To calculate student GPA automatically.', style: TextStyle(fontSize: 13)),
-                            value: 1,
-                            groupValue: _mcqSelectedValue,
-                            contentPadding: EdgeInsets.zero,
-                            onChanged: (val) => setState(() => _mcqSelectedValue = val),
-                          ),
-                          RadioListTile<int>(
-                            title: const Text('B. To map assessment questions to educational standards.', style: TextStyle(fontSize: 13)),
-                            value: 2,
-                            groupValue: _mcqSelectedValue,
-                            contentPadding: EdgeInsets.zero,
-                            onChanged: (val) => setState(() => _mcqSelectedValue = val),
-                          ),
-                          RadioListTile<int>(
-                            title: const Text('C. To restrict students from viewing class folders.', style: TextStyle(fontSize: 13)),
-                            value: 3,
-                            groupValue: _mcqSelectedValue,
-                            contentPadding: EdgeInsets.zero,
-                            onChanged: (val) => setState(() => _mcqSelectedValue = val),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.bgSurface,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Question: ${question['question']}',
+                                    style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textPrimary)),
+                                const SizedBox(height: 12),
+                                ...List.generate(
+                                    options.length,
+                                    (index) => RadioListTile<int>(
+                                          title: Text(options[index],
+                                              style: const TextStyle(
+                                                  fontSize: 13)),
+                                          value: index + 1,
+                                          groupValue: _mcqSelectedValue,
+                                          contentPadding: EdgeInsets.zero,
+                                          onChanged: (val) => setState(
+                                              () => _mcqSelectedValue = val),
+                                        )),
+                              ],
+                            ),
                           ),
                         ],
-                      ),
-                    ),
+                      );
+                    }),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: (_mcqSelectedValue == null || _submissionLoading) ? null : () async {
-                          setState(() => _submissionLoading = true);
-                          final optionLetter = ['A','B','C','D','E'][(_mcqSelectedValue! - 1).clamp(0, 4)];
-                          final content = 'Option $optionLetter';
-                          try {
-                            await CourseRepository().submitAssignment(
-                              widget.courseId,
-                              widget.assignmentId,
-                              {'submission_type': 'mcq', 'content': content},
-                            );
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                content: Text('Quiz answer submitted!'),
-                                backgroundColor: Colors.green,
-                              ));
-                              setState(() => _mcqSelectedValue = null);
-                              await _loadSubmissions();
-                            }
-                          } catch (e) {
-                            if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text(ErrorParser.parse(e)), backgroundColor: Colors.red,
-                            ));
-                          } finally {
-                            if (mounted) setState(() => _submissionLoading = false);
-                          }
-                        },
+                      onPressed: (_mcqSelectedValue == null ||
+                              _submissionLoading)
+                          ? null
+                          : () async {
+                              setState(() => _submissionLoading = true);
+                              final optionLetter = [
+                                'A',
+                                'B',
+                                'C',
+                                'D',
+                                'E'
+                              ][(_mcqSelectedValue! - 1).clamp(0, 4)];
+                              final content = 'Option $optionLetter';
+                              try {
+                                await CourseRepository().submitAssignment(
+                                  widget.courseId,
+                                  widget.assignmentId,
+                                  {
+                                    'submission_type': 'mcq',
+                                    'content': content
+                                  },
+                                );
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(const SnackBar(
+                                    content: Text('Quiz answer submitted!'),
+                                    backgroundColor: Colors.green,
+                                  ));
+                                  setState(() => _mcqSelectedValue = null);
+                                  await _loadSubmissions();
+                                }
+                              } catch (e) {
+                                if (mounted)
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(SnackBar(
+                                    content: Text(ErrorParser.parse(e)),
+                                    backgroundColor: Colors.red,
+                                  ));
+                              } finally {
+                                if (mounted)
+                                  setState(() => _submissionLoading = false);
+                              }
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryIndigo,
                         foregroundColor: Colors.white,
                         minimumSize: const Size(double.infinity, 48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
                       ),
                       child: const Text('Submit Quiz'),
                     ),
                   ] else ...[
                     Text('Write Q&A Response Submission',
-                        style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                        style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary)),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _textSubmissionCtrl,
@@ -985,37 +1204,46 @@ class _AssignmentDetailScreenState
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: _submissionLoading ? null : () async {
-                          final text = _textSubmissionCtrl.text.trim();
-                          if (text.isEmpty) return;
-                          setState(() => _submissionLoading = true);
-                          try {
-                            await CourseRepository().submitAssignment(
-                              widget.courseId,
-                              widget.assignmentId,
-                              {'submission_type': 'text', 'content': text},
-                            );
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                content: Text('Answer submitted successfully!'),
-                                backgroundColor: Colors.green,
-                              ));
-                              _textSubmissionCtrl.clear();
-                              await _loadSubmissions();
-                            }
-                          } catch (e) {
-                            if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text(ErrorParser.parse(e)), backgroundColor: Colors.red,
-                            ));
-                          } finally {
-                            if (mounted) setState(() => _submissionLoading = false);
-                          }
-                        },
+                      onPressed: _submissionLoading
+                          ? null
+                          : () async {
+                              final text = _textSubmissionCtrl.text.trim();
+                              if (text.isEmpty) return;
+                              setState(() => _submissionLoading = true);
+                              try {
+                                await CourseRepository().submitAssignment(
+                                  widget.courseId,
+                                  widget.assignmentId,
+                                  {'submission_type': 'text', 'content': text},
+                                );
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(const SnackBar(
+                                    content:
+                                        Text('Answer submitted successfully!'),
+                                    backgroundColor: Colors.green,
+                                  ));
+                                  _textSubmissionCtrl.clear();
+                                  await _loadSubmissions();
+                                }
+                              } catch (e) {
+                                if (mounted)
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(SnackBar(
+                                    content: Text(ErrorParser.parse(e)),
+                                    backgroundColor: Colors.red,
+                                  ));
+                              } finally {
+                                if (mounted)
+                                  setState(() => _submissionLoading = false);
+                              }
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryIndigo,
                         foregroundColor: Colors.white,
                         minimumSize: const Size(double.infinity, 48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
                       ),
                       child: const Text('Submit Answer'),
                     ),
@@ -1071,7 +1299,8 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
   void _onSaveCurrent() {
     final score = double.tryParse(_scoreCtrl.text);
     final feedback = _feedbackCtrl.text;
-    final updated = Map<String, dynamic>.from(widget.submissions[_currentIndex]);
+    final updated =
+        Map<String, dynamic>.from(widget.submissions[_currentIndex]);
     updated['score'] = score;
     updated['feedback'] = feedback;
     updated['status'] = 'graded';
@@ -1111,7 +1340,8 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
                   ),
                   child: Text(
                     '${i + 1}',
-                    style: GoogleFonts.sourceCodePro(fontSize: 11, color: AppColors.textMuted),
+                    style: GoogleFonts.sourceCodePro(
+                        fontSize: 11, color: AppColors.textMuted),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1120,7 +1350,8 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
                     scrollDirection: Axis.horizontal,
                     child: Text(
                       lines[i],
-                      style: GoogleFonts.sourceCodePro(fontSize: 12, color: Colors.black87),
+                      style: GoogleFonts.sourceCodePro(
+                          fontSize: 12, color: Colors.black87),
                     ),
                   ),
                 ),
@@ -1140,7 +1371,8 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
     return Scaffold(
       backgroundColor: AppColors.bgPage,
       appBar: AppBar(
-        title: Text('SpeedGrader Dashboard', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+        title: Text('SpeedGrader Dashboard',
+            style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -1173,9 +1405,13 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
                   child: Column(
                     children: [
                       Text(sub['student_name'],
-                          style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                          style: GoogleFonts.outfit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary)),
                       Text(sub['student_email'],
-                          style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted)),
+                          style: GoogleFonts.inter(
+                              fontSize: 12, color: AppColors.textMuted)),
                     ],
                   ),
                 ),
@@ -1193,20 +1429,23 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
               ],
             ),
           ),
-          
+
           // Split Pane Body
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final useVertical = constraints.maxWidth < 900;
-                
+
                 final leftPane = SingleChildScrollView(
                   padding: const EdgeInsets.all(24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Submitted Work Preview',
-                          style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                          style: GoogleFonts.outfit(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary)),
                       const SizedBox(height: 12),
                       Container(
                         width: double.infinity,
@@ -1219,16 +1458,23 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
                         child: sub['submission_type'] == 'file'
                             ? Column(
                                 children: [
-                                  const Icon(Icons.insert_drive_file, size: 64, color: AppColors.primaryIndigo),
+                                  const Icon(Icons.insert_drive_file,
+                                      size: 64, color: AppColors.primaryIndigo),
                                   const SizedBox(height: 12),
                                   Text(sub['content'] ?? '',
-                                      style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                                      style: GoogleFonts.inter(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textPrimary)),
                                   const SizedBox(height: 16),
                                   ElevatedButton.icon(
                                     onPressed: () {},
                                     icon: const Icon(Icons.download),
-                                    label: const Text('Download Submission File'),
-                                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryIndigo),
+                                    label:
+                                        const Text('Download Submission File'),
+                                    style: ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            AppColors.primaryIndigo),
                                   ),
                                 ],
                               )
@@ -1236,7 +1482,10 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
                                 ? _buildCodeViewer(sub['content'] ?? '')
                                 : Text(
                                     sub['content'] ?? '',
-                                    style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
+                                    style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        color: AppColors.textSecondary,
+                                        height: 1.5),
                                   ),
                       ),
                     ],
@@ -1249,9 +1498,12 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Grade & Feedback Card',
-                          style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                          style: GoogleFonts.outfit(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary)),
                       const SizedBox(height: 16),
-                      
+
                       // Clickable Rubric Evaluator
                       rubricAsync.when(
                         data: (r) {
@@ -1261,7 +1513,10 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('Rubric Grading Checklist',
-                                  style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                                  style: GoogleFonts.outfit(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary)),
                               const SizedBox(height: 10),
                               ...criteria.map((c) {
                                 final critName = c['name'] as String;
@@ -1272,35 +1527,56 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
                                   child: Padding(
                                     padding: const EdgeInsets.all(12),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text('$critName ($weight%)',
-                                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700)),
+                                            style: GoogleFonts.inter(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w700)),
                                         const SizedBox(height: 8),
                                         Wrap(
                                           spacing: 6,
                                           runSpacing: 6,
                                           children: levels.map((l) {
-                                            final levelName = l['level'] as String;
-                                            final isSelected = _selectedLevels[critName] == levelName;
+                                            final levelName =
+                                                l['level'] as String;
+                                            final isSelected =
+                                                _selectedLevels[critName] ==
+                                                    levelName;
                                             return ChoiceChip(
-                                              label: Text(levelName.toUpperCase(), style: const TextStyle(fontSize: 11)),
+                                              label: Text(
+                                                  levelName.toUpperCase(),
+                                                  style: const TextStyle(
+                                                      fontSize: 11)),
                                               selected: isSelected,
                                               onSelected: (selected) {
                                                 setState(() {
-                                                  _selectedLevels[critName] = levelName;
-                                                  
+                                                  _selectedLevels[critName] =
+                                                      levelName;
+
                                                   // Auto calculate total score based on rubric clicks
                                                   double calculatedTotal = 0;
-                                                  _selectedLevels.forEach((key, val) {
-                                                    final matchCrit = criteria.firstWhere((element) => element['name'] == key);
-                                                    final matchWeight = matchCrit['weight'] as int;
+                                                  _selectedLevels
+                                                      .forEach((key, val) {
+                                                    final matchCrit = criteria
+                                                        .firstWhere((element) =>
+                                                            element['name'] ==
+                                                            key);
+                                                    final matchWeight =
+                                                        matchCrit['weight']
+                                                            as int;
                                                     double factor = 1.0;
-                                                    if (val == 'good') factor = 0.75;
-                                                    if (val == 'poor') factor = 0.40;
-                                                    calculatedTotal += matchWeight * factor;
+                                                    if (val == 'good')
+                                                      factor = 0.75;
+                                                    if (val == 'poor')
+                                                      factor = 0.40;
+                                                    calculatedTotal +=
+                                                        matchWeight * factor;
                                                   });
-                                                  _scoreCtrl.text = calculatedTotal.toStringAsFixed(1);
+                                                  _scoreCtrl.text =
+                                                      calculatedTotal
+                                                          .toStringAsFixed(1);
                                                 });
                                               },
                                             );
@@ -1319,10 +1595,11 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
                         loading: () => const CircularProgressIndicator(),
                         error: (_, __) => const SizedBox.shrink(),
                       ),
-                      
+
                       TextField(
                         controller: _scoreCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
                         decoration: const InputDecoration(
                           labelText: 'Points / Score',
                           hintText: 'e.g. 85.5',
@@ -1344,7 +1621,8 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
                           backgroundColor: AppColors.successGreen,
                           foregroundColor: Colors.white,
                           minimumSize: const Size(double.infinity, 48),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
                         ),
                         child: const Text('Save Grade & Comments'),
                       ),

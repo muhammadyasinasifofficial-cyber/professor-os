@@ -182,12 +182,37 @@ class CourseRepository {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> aiGradeSubmission(int sid) async {
+    final response = await _dio.post(ApiConstants.aiGradeSubmission(sid));
+    return response.data as Map<String, dynamic>;
+  }
+
   Future<void> deleteAssignment(int courseId, int aid) async {
     await _dio.delete(ApiConstants.deleteAssignment(courseId, aid));
   }
 
   Future<Map<String, dynamic>> getStudentDashboard() async {
     final response = await _dio.get(ApiConstants.studentDashboard);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> ingestCourseMaterial(
+      int courseId, List<int> fileBytes, String filename) async {
+    final formData = FormData.fromMap({
+      'file': MultipartFile.fromBytes(fileBytes, filename: filename),
+    });
+    final response = await _dio.post(
+      '/courses/$courseId/materials/ingest',
+      data: formData,
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> chatWithCourse(
+      int courseId, String message) async {
+    final response = await _dio.post(ApiConstants.courseChat(courseId), data: {
+      'message': message,
+    });
     return response.data as Map<String, dynamic>;
   }
 

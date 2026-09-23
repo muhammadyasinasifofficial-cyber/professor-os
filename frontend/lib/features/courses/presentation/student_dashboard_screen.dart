@@ -279,6 +279,7 @@ class StudentDashboardScreen extends ConsumerWidget {
                   if (ctx.mounted) {
                     Navigator.pop(ctx);
                     ref.invalidate(courseListProvider);
+                    ref.invalidate(studentDashboardProvider);
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content: Text('Successfully joined the course!'),
                       backgroundColor: AppColors.successGreen,

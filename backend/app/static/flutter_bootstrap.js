@@ -9,8 +9,11 @@ if (!window._flutter) {
 _flutter.buildConfig = {"engineRevision":"36335019a8eab588c3c2ea783c618d90505be233","builds":[{"compileTarget":"dart2js","renderer":"canvaskit","mainJsPath":"main.dart.js"}]};
 
 
+// Railway serves the web bundle directly from FastAPI. Keep PWA caching off so
+// a new deployment is picked up without a stale service-worker shell.
 _flutter.loader.load({
-  serviceWorkerSettings: {
-    serviceWorkerVersion: "3423532652"
+  onEntrypointLoaded: async (engineInitializer) => {
+    const appRunner = await engineInitializer.initializeEngine();
+    await appRunner.runApp();
   }
 });

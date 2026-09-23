@@ -12,6 +12,7 @@ from app.db.base import get_db
 from app.models.user import User
 from app.models.exam_attempt import ExamAttempt
 from app.models.assignment import Assignment
+from app.services.course_service import CourseService
 
 router = APIRouter(tags=["Exams"])
 
@@ -20,13 +21,17 @@ router = APIRouter(tags=["Exams"])
 async def start_exam(
     course_id: int,
     assignment_id: int,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_roles("student"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Student starts an exam attempt. Returns time limit and attempt ID."""
     assignment = await db.get(Assignment, assignment_id)
     if not assignment or assignment.course_id != course_id:
         raise HTTPException(status_code=404, detail="Assignment not found.")
+    try:
+        await CourseService(db).get_course_with_access_check(course_id, user)
+    except (ValueError, PermissionError) as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     if assignment.status != "published":
         raise HTTPException(status_code=400, detail="Assignment is not published.")
 
@@ -65,10 +70,18 @@ async def start_exam(
 async def flag_exam_attempt(
     course_id: int,
     assignment_id: int,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_roles("student"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Record a tab-switch / app-background event for anti-cheat tracking."""
+    assignment = await db.get(Assignment, assignment_id)
+    if not assignment or assignment.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Assignment not found.")
+    try:
+        await CourseService(db).get_course_with_access_check(course_id, user)
+    except (ValueError, PermissionError) as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
     result = await db.execute(
         select(ExamAttempt).where(
             ExamAttempt.assignment_id == assignment_id,
@@ -98,10 +111,18 @@ async def flag_exam_attempt(
 async def submit_exam_attempt(
     course_id: int,
     assignment_id: int,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_roles("student"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Mark the active exam attempt as submitted."""
+    assignment = await db.get(Assignment, assignment_id)
+    if not assignment or assignment.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Assignment not found.")
+    try:
+        await CourseService(db).get_course_with_access_check(course_id, user)
+    except (ValueError, PermissionError) as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
     result = await db.execute(
         select(ExamAttempt).where(
             ExamAttempt.assignment_id == assignment_id,

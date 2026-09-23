@@ -19,9 +19,22 @@ from app.schemas.submission import (
 )
 from app.services.submission_service import SubmissionService
 from app.services.assignment_service import AssignmentService
+from app.services.course_service import CourseService
 from app.services.grading_pipeline import grade_submission_task, _grade_submission_core
 
 router = APIRouter(tags=["Submissions"])
+MAX_SUBMISSION_BYTES = 25 * 1024 * 1024
+
+
+async def _verify_student_assignment(course_id: int, aid: int, user: User, db: AsyncSession) -> Assignment:
+    assignment = await db.get(Assignment, aid)
+    if not assignment or assignment.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Assignment not found.")
+    try:
+        await CourseService(db).get_course_with_access_check(course_id, user)
+    except (ValueError, PermissionError) as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    return assignment
 
 
 def _to_response(sub) -> SubmissionResponse:
@@ -60,6 +73,7 @@ async def submit_assignment(
 ):
     svc = SubmissionService(db)
     try:
+        await _verify_student_assignment(course_id, aid, user, db)
         sub = await svc.submit(aid, user.id, body)
         return _to_response(sub)
     except ValueError as e:
@@ -78,7 +92,10 @@ async def submit_file(
     db: Annotated[AsyncSession, Depends(get_db)],
     file: UploadFile = File(...),
 ):
-    content = await file.read()
+    await _verify_student_assignment(course_id, aid, user, db)
+    content = await file.read(MAX_SUBMISSION_BYTES + 1)
+    if len(content) > MAX_SUBMISSION_BYTES:
+        raise HTTPException(status_code=413, detail="Submission file exceeds the 25 MB limit.")
     svc = SubmissionService(db)
     try:
         sub = await svc.save_file(aid, user.id, content, file.filename or "upload")
@@ -99,6 +116,7 @@ async def get_my_submission(
     user: Annotated[User, Depends(require_roles("student"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    await _verify_student_assignment(course_id, aid, user, db)
     svc = SubmissionService(db)
     sub = await svc.get_my_submission(aid, user.id)
     if not sub:

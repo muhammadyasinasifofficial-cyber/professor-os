@@ -12,6 +12,7 @@ import 'package:local_auth/local_auth.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/error_parser.dart';
 import '../data/course_repository.dart';
+import '../utils/mcq_parser.dart';
 
 class ExamScreen extends ConsumerStatefulWidget {
   final int courseId;
@@ -112,7 +113,8 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
       );
       if (mounted) setState(() => _biometricPassed = authenticated);
       if (!authenticated && mounted) {
-        setState(() => _error = 'Identity verification failed. Please try again.');
+        setState(
+            () => _error = 'Identity verification failed. Please try again.');
       }
     } catch (_) {
       // local_auth not available (e.g., web) — skip
@@ -123,7 +125,8 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
   // ── Exam Start ──────────────────────────────────────────────────
   Future<void> _startExam() async {
     try {
-      final result = await _repo.startExam(widget.courseId, widget.assignmentId);
+      final result =
+          await _repo.startExam(widget.courseId, widget.assignmentId);
       final timeLimit = result['time_limit_minutes'] as int?;
       setState(() {
         _examStarted = true;
@@ -139,7 +142,10 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
 
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) { t.cancel(); return; }
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
       if (_remainingSeconds <= 1) {
         t.cancel();
         _autoSubmit();
@@ -175,7 +181,8 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
 
     // Report to backend
     try {
-      final result = await _repo.flagExamSwitch(widget.courseId, widget.assignmentId);
+      final result =
+          await _repo.flagExamSwitch(widget.courseId, widget.assignmentId);
       if (result['is_flagged'] == true) {
         setState(() => _isFlagged = true);
       }
@@ -190,9 +197,11 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
           backgroundColor: AppColors.bgSurface,
           title: Row(
             children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+              const Icon(Icons.warning_amber_rounded,
+                  color: Colors.orange, size: 28),
               const SizedBox(width: 8),
-              Text('Warning', style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+              Text('Warning',
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
             ],
           ),
           content: Column(
@@ -226,13 +235,15 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
           ),
           actions: [
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryIndigo),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryIndigo),
               onPressed: () {
                 Navigator.pop(context);
                 setState(() => _showingWarning = false);
                 _enterFullscreen();
               },
-              child: const Text('Return to Exam', style: TextStyle(color: Colors.white)),
+              child: const Text('Return to Exam',
+                  style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -272,7 +283,8 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
           break;
         case 'mcq':
           if (_mcqSelected != null) {
-            final optionLetter = ['A','B','C','D','E'][(_mcqSelected! - 1).clamp(0, 4)];
+            final optionLetter =
+                ['A', 'B', 'C', 'D', 'E'][(_mcqSelected! - 1).clamp(0, 4)];
             await _repo.submitAssignment(
               widget.courseId,
               widget.assignmentId,
@@ -338,10 +350,12 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.fingerprint, size: 72, color: AppColors.primaryIndigo),
+                const Icon(Icons.fingerprint,
+                    size: 72, color: AppColors.primaryIndigo),
                 const SizedBox(height: 24),
                 Text('Identity Verification Required',
-                    style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.w700)),
+                    style: GoogleFonts.outfit(
+                        fontSize: 22, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 12),
                 Text(
                   'Please verify your identity using biometrics or device PIN to start the exam.',
@@ -395,7 +409,8 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
                       style: GoogleFonts.outfit(
                           fontSize: 24, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 16),
-                  _instructionItem(Icons.timer_outlined,
+                  _instructionItem(
+                      Icons.timer_outlined,
                       widget.timeLimitMinutes != null
                           ? 'Time limit: ${widget.timeLimitMinutes} minutes. The exam auto-submits when time runs out.'
                           : 'No time limit for this exam.'),
@@ -537,13 +552,12 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
                 padding: const EdgeInsets.only(right: 8),
                 child: Center(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     decoration: BoxDecoration(
                       color: _timerColor.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(8),
-                      border:
-                          Border.all(color: _timerColor.withOpacity(0.4)),
+                      border: Border.all(color: _timerColor.withOpacity(0.4)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -694,8 +708,8 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Your Answer',
-            style: GoogleFonts.outfit(
-                fontSize: 16, fontWeight: FontWeight.w600)),
+            style:
+                GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600)),
         const SizedBox(height: 10),
         // Copy-paste disabled via ignoring selection gestures
         TextField(
@@ -722,14 +736,15 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Your Code',
-            style: GoogleFonts.outfit(
-                fontSize: 16, fontWeight: FontWeight.w600)),
+            style:
+                GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600)),
         const SizedBox(height: 10),
         TextField(
           controller: _codeCtrl,
           maxLines: 16,
           enableInteractiveSelection: false,
-          style: GoogleFonts.jetBrainsMono(fontSize: 13, color: AppColors.inkPrimary),
+          style: GoogleFonts.jetBrainsMono(
+              fontSize: 13, color: AppColors.inkPrimary),
           decoration: InputDecoration(
             hintText: '// Write your code here...\n',
             hintStyle: GoogleFonts.jetBrainsMono(
@@ -747,8 +762,27 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
   }
 
   Widget _buildMcqSection() {
-    // MCQ options are parsed from description: lines starting with A), B), C), D)
     final desc = widget.description ?? '';
+    final structuredQuestions = parseMcqDescription(desc);
+    if (structuredQuestions.isNotEmpty) {
+      final question = structuredQuestions.first;
+      final options = (question['options'] as List?)
+              ?.map((option) => option.toString())
+              .toList() ??
+          const <String>[];
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(question['question'].toString(),
+              style: GoogleFonts.outfit(
+                  fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 12),
+          _mcqOptions(options),
+        ],
+      );
+    }
+
+    // Backward-compatible parsing for legacy plain-text MCQs.
     final lines = desc.split('\n');
     final questionLines = <String>[];
     final optionLines = <String>[];
@@ -762,15 +796,20 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
     }
     // If no structured options found, show as free-response radio (generic)
     if (optionLines.isEmpty) {
-      optionLines.addAll(['A) Option A', 'B) Option B', 'C) Option C', 'D) Option D']);
+      optionLines
+          .addAll(['A) Option A', 'B) Option B', 'C) Option C', 'D) Option D']);
     }
 
+    return _mcqOptions(optionLines);
+  }
+
+  Widget _mcqOptions(List<String> optionLines) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Select Your Answer',
-            style: GoogleFonts.outfit(
-                fontSize: 16, fontWeight: FontWeight.w600)),
+            style:
+                GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600)),
         const SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
@@ -810,12 +849,11 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Upload Your File',
-            style: GoogleFonts.outfit(
-                fontSize: 16, fontWeight: FontWeight.w600)),
+            style:
+                GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600)),
         const SizedBox(height: 6),
         Text('Allowed: PDF, ZIP, DOCX, TXT • Max: 25 MB',
-            style: GoogleFonts.inter(
-                fontSize: 12, color: AppColors.textMuted)),
+            style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted)),
         const SizedBox(height: 12),
         InkWell(
           onTap: () async {

@@ -12,6 +12,7 @@ Features:
 """
 
 import json
+import base64
 import logging
 import os
 import shutil
@@ -26,6 +27,7 @@ from app.config.settings import get_settings
 
 logger = logging.getLogger("professor_os.ingestion")
 settings = get_settings()
+_SHARED_EMBEDDING_MODEL = None
 
 
 class DocumentIngestionError(Exception):
@@ -69,6 +71,8 @@ class DoclingPipeline:
     def __init__(self, course_id: int):
         self.course_id = course_id
         self.storage_dir = Path(settings.FAISS_STORAGE_PATH)
+        if settings.STORAGE_ROOT != "./data" and settings.FAISS_STORAGE_PATH == "./data/faiss_indexes":
+            self.storage_dir = Path(settings.STORAGE_ROOT) / "faiss_indexes"
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self.index_file = self.storage_dir / f"course_{course_id}.index"
         self.meta_file = self.storage_dir / f"course_{course_id}_meta.json"
@@ -76,6 +80,9 @@ class DoclingPipeline:
 
     def _get_embedding_model(self):
         """Lazy-loads SentenceTransformer model singleton with robust local fallback."""
+        global _SHARED_EMBEDDING_MODEL
+        if self._embedding_model is None and _SHARED_EMBEDDING_MODEL is not None:
+            self._embedding_model = _SHARED_EMBEDDING_MODEL
         if self._embedding_model is None:
             try:
                 from sentence_transformers import SentenceTransformer
@@ -92,6 +99,7 @@ class DoclingPipeline:
                         return mat.toarray().astype(np.float32)
 
                 self._embedding_model = SimpleEncoder()
+            _SHARED_EMBEDDING_MODEL = self._embedding_model
         return self._embedding_model
 
     def parse_document_to_markdown(self, file_path: str) -> str:
@@ -295,6 +303,7 @@ def ingest_course_document_task(
     file_path: str,
     filename: str,
     material_id: Optional[str] = None,
+    file_data_b64: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Celery background worker task for Docling document conversion and FAISS indexing.
 
@@ -303,11 +312,23 @@ def ingest_course_document_task(
     logger.info("🚀 [CELERY:rag_queue] Starting document ingestion for Course ID: %s, File: %s", course_id, filename)
     start_time = time.perf_counter()
 
+    temporary_path: Optional[Path] = None
+    input_path = Path(file_path)
     try:
+        # Railway web and worker services do not share a filesystem. The API
+        # includes the bounded upload payload so the worker remains independent
+        # of the web container's ephemeral path.
+        if file_data_b64:
+            suffix = Path(filename).suffix or ".bin"
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+                temp_file.write(base64.b64decode(file_data_b64, validate=True))
+                temporary_path = Path(temp_file.name)
+            input_path = temporary_path
+
         pipeline = DoclingPipeline(course_id=course_id)
 
         # 1. Convert via Docling
-        markdown_text = pipeline.parse_document_to_markdown(file_path)
+        markdown_text = pipeline.parse_document_to_markdown(str(input_path))
 
         # 2. Semantic Chunking
         chunks = _chunk_markdown(
@@ -341,3 +362,6 @@ def ingest_course_document_task(
         logger.error("❌ [CELERY:rag_queue] Document ingestion failed for '%s': %s", filename, exc, exc_info=True)
         # Automatic retry on transient failures
         raise self.retry(exc=exc)
+    finally:
+        if temporary_path:
+            temporary_path.unlink(missing_ok=True)

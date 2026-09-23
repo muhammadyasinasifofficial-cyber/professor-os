@@ -1,6 +1,7 @@
 """ProfessorOS – Submission service (submit, grade, list)."""
 
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
@@ -12,9 +13,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.submission import Submission, SubmissionStatus
 from app.models.assignment import Assignment
 from app.schemas.submission import SubmissionCreate, SubmissionGrade
+from app.config.settings import get_settings
 
 # Directory for uploaded submission files
-SUBMISSIONS_DIR = Path(__file__).parent.parent.parent / "static" / "submissions"
+SUBMISSIONS_DIR = Path(get_settings().STORAGE_ROOT) / "submissions"
 
 
 class SubmissionService:
@@ -77,7 +79,9 @@ class SubmissionService:
 
         # Persist file to disk
         SUBMISSIONS_DIR.mkdir(parents=True, exist_ok=True)
-        safe_name = f"{assignment_id}_{student_id}_{filename}"
+        original_name = Path(filename or "submission.bin").name
+        safe_name_part = re.sub(r"[^A-Za-z0-9_.-]", "_", original_name) or "submission.bin"
+        safe_name = f"{assignment_id}_{student_id}_{safe_name_part}"
         file_path = SUBMISSIONS_DIR / safe_name
         file_path.write_bytes(file_bytes)
 

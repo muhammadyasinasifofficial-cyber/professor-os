@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:8080"
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8080,http://127.0.0.1:8080,https://professor-os-production-65b2.up.railway.app"
 
+    # Set to a mounted Railway Volume path (for example /data) in production.
+    # Local ./data remains the safe development default.
+    STORAGE_ROOT: str = "./data"
+
     # ── Database (PostgreSQL with asyncpg) ───────────────────────────────
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/professor_os"
     DB_POOL_SIZE: int = 20
