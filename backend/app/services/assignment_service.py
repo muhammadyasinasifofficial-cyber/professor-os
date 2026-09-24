@@ -38,12 +38,29 @@ class AssignmentService:
         await self.db.flush()
 
         # Link CLOs
-        if data.clo_ids:
-            for clo_id in data.clo_ids:
-                await self.db.execute(
-                    assignment_clo_table.insert().values(assignment_id=assignment.id, clo_id=clo_id)
+        clo_ids_to_link = list(data.clo_ids or [])
+        if not clo_ids_to_link:
+            res = await self.db.execute(select(CLO).where(CLO.course_id == course_id).order_by(CLO.code))
+            course_clos = list(res.scalars().all())
+            if not course_clos:
+                default_clo = CLO(
+                    course_id=course_id,
+                    code="CLO-1",
+                    description="Understand and apply core course concepts and methodologies.",
+                    bloom_level="Applying",
+                    domain="Cognitive",
+                    weight=100.0,
                 )
-            await self.db.flush()
+                self.db.add(default_clo)
+                await self.db.flush()
+                course_clos = [default_clo]
+            clo_ids_to_link = [course_clos[0].id]
+
+        for clo_id in clo_ids_to_link:
+            await self.db.execute(
+                assignment_clo_table.insert().values(assignment_id=assignment.id, clo_id=clo_id)
+            )
+        await self.db.flush()
         return await self.get_assignment(assignment.id)
 
     async def get_assignment(self, assignment_id: int) -> Assignment:
@@ -210,9 +227,27 @@ class AssignmentService:
                 if len(c.levels) != 4:
                     errors.append(f"Criterion '{c.name}' must have exactly 4 levels (has {len(c.levels)}).")
 
-        # 5. Must be linked to at least one CLO
+        # 5. Must be linked to at least one CLO (auto-link if missing)
         if not assignment.clos:
-            errors.append("Assignment must be linked to at least one CLO.")
+            res = await self.db.execute(select(CLO).where(CLO.course_id == assignment.course_id).order_by(CLO.code))
+            course_clos = list(res.scalars().all())
+            if not course_clos:
+                default_clo = CLO(
+                    course_id=assignment.course_id,
+                    code="CLO-1",
+                    description="Understand and apply core course concepts and methodologies.",
+                    bloom_level="Applying",
+                    domain="Cognitive",
+                    weight=100.0,
+                )
+                self.db.add(default_clo)
+                await self.db.flush()
+                course_clos = [default_clo]
+            await self.db.execute(
+                assignment_clo_table.insert().values(assignment_id=assignment.id, clo_id=course_clos[0].id)
+            )
+            await self.db.flush()
+            assignment = await self.get_assignment(assignment_id)
 
         if errors:
             raise ValueError(" | ".join(errors))

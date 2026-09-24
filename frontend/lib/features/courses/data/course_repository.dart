@@ -302,4 +302,36 @@ class CourseRepository {
     );
     return response.data as Map<String, dynamic>;
   }
+
+  // ── AI Question Bank & OBE Attainment ──
+
+  Future<List<Map<String, dynamic>>> getQuestionBank(int courseId, {String? status, String? bloomLevel}) async {
+    final response = await _dio.get(
+      '/courses/$courseId/question-bank',
+      queryParameters: {
+        if (status != null && status.isNotEmpty) 'status': status,
+        if (bloomLevel != null && bloomLevel.isNotEmpty) 'bloom_level': bloomLevel,
+      },
+    );
+    final raw = response.data as List<dynamic>? ?? [];
+    return raw.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+  }
+
+  Future<Map<String, dynamic>> approveQuestion(String questionId) async {
+    final response = await _dio.post('/question-bank/$questionId/approve');
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> rejectQuestion(String questionId) async {
+    final response = await _dio.post('/question-bank/$questionId/reject');
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getCloAttainment(int courseId, {String semester = 'Spring-2026'}) async {
+    final response = await _dio.get(
+      '/courses/$courseId/clo-attainment',
+      queryParameters: {'semester': semester},
+    );
+    return response.data as Map<String, dynamic>;
+  }
 }

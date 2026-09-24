@@ -59,6 +59,12 @@ class _CreateCourseScreenState extends ConsumerState<CreateCourseScreen> {
       _CategoryItem(name: 'Midterm', weight: 20, isCustom: false),
       _CategoryItem(name: 'Final Exam', weight: 40, isCustom: false),
     ];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = ref.read(authProvider).valueOrNull;
+      if (user != null && user['role'] != 'admin') {
+        _selectedProfessorId = user['id'] as int?;
+      }
+    });
     if (widget.courseId != null) _load();
   }
 
@@ -104,12 +110,17 @@ class _CreateCourseScreenState extends ConsumerState<CreateCourseScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    final user = ref.read(authProvider).valueOrNull;
     if (widget.courseId == null && _selectedProfessorId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Please select an assigned professor for this course.'),
-        backgroundColor: AppColors.dangerRose,
-      ));
-      return;
+      if (user != null && user['role'] != 'admin') {
+        _selectedProfessorId = user['id'] as int?;
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Please select an assigned professor for this course.'),
+          backgroundColor: AppColors.dangerRose,
+        ));
+        return;
+      }
     }
     final total = _categories.fold<double>(0, (sum, item) => sum + item.weight);
     if (total != 100) {
@@ -163,16 +174,28 @@ class _CreateCourseScreenState extends ConsumerState<CreateCourseScreen> {
         'final_weight': f.toInt(),
       };
 
+      Map<String, dynamic>? newCourse;
       if (_existing != null) {
         await CourseRepository()
             .updateCourse(int.parse(widget.courseId!), data);
       } else {
-        await CourseRepository().createCourse(data);
+        newCourse = await CourseRepository().createCourse(data);
       }
 
       if (mounted) {
         ref.invalidate(courseListProvider);
-        context.go('/courses');
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_existing != null
+              ? 'Course updated successfully.'
+              : 'Course created successfully.'),
+          backgroundColor: AppColors.successGreen,
+        ));
+        final newId = newCourse?['id'] ?? widget.courseId;
+        if (newId != null) {
+          context.go('/courses/$newId');
+        } else {
+          context.go('/courses');
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -188,7 +211,6 @@ class _CreateCourseScreenState extends ConsumerState<CreateCourseScreen> {
   Widget build(BuildContext context) {
     final role =
         ref.watch(authProvider).valueOrNull?['role'] as String? ?? 'student';
-    final isAdmin = role == 'admin';
     final canManage = role == 'admin' || role == 'professor';
 
     if (widget.courseId == null && !canManage) {

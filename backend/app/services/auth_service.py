@@ -75,7 +75,7 @@ class AuthService:
         """
         user = await self._get_user_by_email(email)
         if not user:
-            raise ValueError("No account found with this email address.")
+            raise ValueError("Invalid email or password.")
 
         # Check verification first – no point in counting attempts for unverified users
         if not user.is_verified:

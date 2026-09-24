@@ -13,6 +13,7 @@ import '../../../shared/widgets/prof_badge.dart';
 import '../../../shared/widgets/prof_confirm_sheet.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../courses/providers/course_providers.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -566,18 +567,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildAdminStats(BuildContext context) {
+    final coursesAsync = ref.watch(courseListProvider);
+    final courses = (coursesAsync.valueOrNull as List?)?.whereType<Map<String, dynamic>>().toList() ?? <Map<String, dynamic>>[];
+    final totalCourses = courses.length;
+    final totalStudents = courses.fold<int>(
+        0, (sum, c) => sum + ((c['enrollment_count'] as num?)?.toInt() ?? 0));
+
     final isMobile = MediaQuery.sizeOf(context).width < 560;
     final children = [
       Expanded(
-          child: _academicStatCard('Total Cohorts Analyzed', '12',
+          child: _academicStatCard('Institution Courses', '$totalCourses Managed',
               Icons.analytics_outlined, AppColors.inkPrimary)),
       if (!isMobile) const SizedBox(width: 14),
       Expanded(
-          child: _academicStatCard('Global HEC Sync Status', 'Synced',
-              Icons.sync_rounded, AppColors.verified)),
+          child: _academicStatCard('Total Student Seats', '$totalStudents Enrolled',
+              Icons.people_outline_rounded, AppColors.verified)),
       if (!isMobile) const SizedBox(width: 14),
       Expanded(
-          child: _academicStatCard('AI Model Uptime', '99.9%',
+          child: _academicStatCard('HEC OBE Engine', 'Synchronized',
               Icons.dns_outlined, AppColors.successGreen)),
     ];
     return isMobile
@@ -591,22 +598,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildProfStats(BuildContext context) {
+    final coursesAsync = ref.watch(courseListProvider);
+    final courses = (coursesAsync.valueOrNull as List?)?.whereType<Map<String, dynamic>>().toList() ?? <Map<String, dynamic>>[];
+    final totalCourses = courses.length;
+    final totalStudents = courses.fold<int>(
+        0, (sum, c) => sum + ((c['enrollment_count'] as num?)?.toInt() ?? 0));
+    final totalAssignments = courses.fold<int>(
+        0, (sum, c) => sum + ((c['assignment_count'] as num?)?.toInt() ?? 0));
+
     final isMobile = MediaQuery.sizeOf(context).width < 560;
     final row1 = [
       Expanded(
-          child: _academicStatCard('Students Flagged At-Risk', '18',
-              Icons.warning_amber_rounded, AppColors.pending)),
+          child: _academicStatCard('Active Courses', '$totalCourses Course${totalCourses == 1 ? '' : 's'}',
+              Icons.menu_book_rounded, AppColors.inkPrimary)),
       if (!isMobile) const SizedBox(width: 14),
       Expanded(
-          child: _academicStatCard('HEC Compliance Score', '98.4%',
-              Icons.verified_outlined, AppColors.verified)),
+          child: _academicStatCard('Total Enrolled Students', '$totalStudents Student${totalStudents == 1 ? '' : 's'}',
+              Icons.group_outlined, AppColors.verified)),
     ];
     final row2 = [
       Expanded(
-          child: _academicStatCard('AI Grading Speed', '1.2m / sub',
-              Icons.bolt_outlined, AppColors.signal)),
+          child: _academicStatCard('Curriculum Assignments', '$totalAssignments Created',
+              Icons.assignment_outlined, AppColors.signal)),
       if (!isMobile) const SizedBox(width: 14),
-      Expanded(child: Container()), // Empty space for alignment
+      Expanded(
+          child: _academicStatCard('OBE Attainment Status', 'Active & Grounded',
+              Icons.verified_outlined, AppColors.successGreen)),
     ];
 
     return isMobile
@@ -624,18 +641,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildStudentStats(BuildContext context) {
+    final dashAsync = ref.watch(studentDashboardProvider);
+    final dash = dashAsync.valueOrNull ?? {};
+    final counts = dash['counts'] as Map<String, dynamic>? ?? {};
+    final enrolled = (counts['enrolled_courses'] as num?)?.toInt() ?? 0;
+    final pending = (counts['pending_submissions'] as num?)?.toInt() ?? 0;
+    final graded = (counts['graded_submissions'] as num?)?.toInt() ?? 0;
+
     final isMobile = MediaQuery.sizeOf(context).width < 560;
     final children = [
       Expanded(
-          child: _academicStatCard('Overall Competency Index', '82 / 100',
-              Icons.psychology_outlined, AppColors.primaryIndigo)),
+          child: _academicStatCard('Enrolled Courses', '$enrolled Active',
+              Icons.menu_book_rounded, AppColors.primaryIndigo)),
       if (!isMobile) const SizedBox(width: 14),
       Expanded(
-          child: _academicStatCard('Weakness Areas', '3 Identified',
-              Icons.troubleshoot_rounded, AppColors.pending)),
+          child: _academicStatCard('Pending Submissions', '$pending Due',
+              Icons.schedule_rounded, AppColors.pending)),
       if (!isMobile) const SizedBox(width: 14),
       Expanded(
-          child: _academicStatCard('Automated Feedback', '45 Processed',
+          child: _academicStatCard('Graded & Feedback', '$graded Graded',
               Icons.chat_bubble_outline_rounded, AppColors.verified)),
     ];
     return isMobile

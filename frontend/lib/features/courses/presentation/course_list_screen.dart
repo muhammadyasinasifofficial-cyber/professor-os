@@ -359,8 +359,9 @@ class _CourseRowState extends State<_CourseRow> {
                 style: GoogleFonts.inter(
                     fontSize: 14, color: AppColors.inkSecondary),
               );
+              final count = course['enrollment_count'] ?? 0;
               final enrollment = Text(
-                '${course['enrollment_count']} students',
+                '$count ${count == 1 ? 'student' : 'students'}',
                 style: GoogleFonts.inter(
                     fontSize: 14, color: AppColors.inkSecondary),
               );

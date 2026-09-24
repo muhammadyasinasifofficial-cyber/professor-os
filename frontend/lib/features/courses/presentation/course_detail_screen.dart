@@ -14,9 +14,9 @@ import '../../../shared/widgets/hec_weightage_widget.dart';
 import '../../../shared/widgets/prof_confirm_sheet.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/utils/error_parser.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../data/course_repository.dart';
 import '../providers/course_providers.dart';
+import 'ai_quiz_obe_dialog.dart';
 
 class CourseDetailScreen extends ConsumerStatefulWidget {
   final int courseId;
@@ -48,27 +48,9 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen>
     super.dispose();
   }
 
-  Future<void> _openAIQuizAndOBE() async {
-    final uri = Uri.parse('/static_assets/react/index.html?courseId=${widget.courseId}');
-    try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.platformDefault);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Unable to launch AI Quiz & OBE portal.'),
-            backgroundColor: AppColors.dangerRose,
-          ));
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(ErrorParser.parse(e)),
-          backgroundColor: AppColors.dangerRose,
-        ));
-      }
-    }
+  Future<void> _openAIQuizAndOBE([String? courseTitle]) async {
+    final title = courseTitle ?? 'Course Assessments';
+    await AiQuizObeDialog.show(context, widget.courseId, title);
   }
 
   Future<void> _showCourseChat([String? courseTitle]) async {
@@ -141,7 +123,8 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen>
                 label: isNarrow
                     ? const SizedBox.shrink()
                     : const Text('AI Quiz & OBE'),
-                onPressed: _openAIQuizAndOBE,
+                onPressed: () => _openAIQuizAndOBE(
+                    courseAsync.valueOrNull?['title'] as String?),
                 style: OutlinedButton.styleFrom(
                   backgroundColor: AppColors.surfaceMid,
                   foregroundColor: AppColors.inkPrimary,
@@ -688,7 +671,7 @@ class _StudentsTabState extends ConsumerState<_StudentsTab>
           final created = res['created'] ?? 0;
           final errors = (res['errors'] as List? ?? []);
           final msg = errors.isEmpty
-              ? '$created students enrolled successfully.'
+              ? '$created ${created == 1 ? 'student' : 'students'} enrolled successfully.'
               : '$created enrolled, ${errors.length} errors (check CSV format).';
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(msg),
@@ -1169,7 +1152,7 @@ class _CourseAiChatDialogState extends State<CourseAiChatDialog> {
       CourseChatMessage(
         isUser: false,
         text:
-            'Hello! I am your AI Teaching Assistant for **${widget.courseTitle}**.\n\nI have indexed your course lecture slides, notes, and curriculum. Ask me any question, ask for concept explanations, or pick a suggested topic below!',
+            'Hello! I am your AI Teaching Assistant for ${widget.courseTitle}.\n\nAsk me any question about course concepts, exam prep, or pick a suggested topic below!',
         timestamp: DateTime.now(),
       ),
     );
@@ -1684,7 +1667,7 @@ class _MaterialsTabState extends ConsumerState<_MaterialsTab>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Parsed by IBM Docling into our FAISS vector store. Used by Ask Course AI.',
+                    'Course lecture materials indexed for AI teaching assistant.',
                     style: GoogleFonts.dmSans(
                       fontSize: 13,
                       color: AppColors.inkSecondary,

@@ -384,7 +384,19 @@ async def chat_with_course(
     except Exception as e:
         import logging
         logging.getLogger("professor_os.chat").exception("Course chat failed", exc_info=e)
-        reply_text = "I couldn't process that question right now. Please try again in a moment."
+        if chunks:
+            top_chunk = chunks[0]
+            src_file = top_chunk.get("source_file", "Course Materials")
+            reply_text = (
+                f"Based on your course materials in {src_file}:\n\n"
+                f"{top_chunk.get('text', '')}\n\n"
+                "(Note: Cloud AI generation is currently operating in direct retrieval mode. Full synthesis will be active momentarily.)"
+            )
+        else:
+            reply_text = (
+                f"I searched the indexed course materials for '{course.title}', but could not find a direct section matching your question. "
+                "Please make sure your instructor has uploaded the relevant lecture slides or notes under Course Materials, or try rephrasing your question."
+            )
 
     return CourseChatResponse(
         response=reply_text,

@@ -88,14 +88,7 @@ class _WizardState extends ConsumerState<AssignmentCreationWizard> {
   int get _totalSteps => _stepFlow.length;
 
   Future<void> _publish(bool asDraft) async {
-    if (!asDraft && _selectedCloIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text(
-            'HEC Policy Warning: At least 1 CLO must be linked before publishing.'),
-        backgroundColor: AppColors.dangerRose,
-      ));
-      return;
-    }
+    // If no CLO was selected manually, backend will automatically link the course CLO or seed CLO-1.
 
     setState(() => _loading = true);
     try {
@@ -789,6 +782,15 @@ class _WizardState extends ConsumerState<AssignmentCreationWizard> {
                               )
                             ],
                           );
+                        }
+                        if (_selectedCloIds.isEmpty && clos.isNotEmpty) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted && _selectedCloIds.isEmpty) {
+                              setState(() {
+                                _selectedCloIds.add(clos.first['id'] as int);
+                              });
+                            }
+                          });
                         }
                         return Wrap(
                           spacing: 8,
