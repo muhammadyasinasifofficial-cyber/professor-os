@@ -39,3 +39,9 @@ final courseClosProvider = FutureProvider.family<List<dynamic>, int>((ref, cours
   final repo = ref.read(courseRepositoryProvider);
   return await repo.listClos(courseId);
 });
+
+/// Uploaded lecture materials for a course (PDF/PPTX/DOCX for RAG).
+final courseMaterialsProvider = FutureProvider.family<List<Map<String, dynamic>>, int>((ref, courseId) async {
+  final repo = ref.read(courseRepositoryProvider);
+  return await repo.getCourseMaterials(courseId);
+});

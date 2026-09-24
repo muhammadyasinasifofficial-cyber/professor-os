@@ -8,6 +8,7 @@ Hardened with Cloudflare Security Audit Principles:
 """
 
 import base64
+import json
 import os
 import random
 import re
@@ -262,6 +263,114 @@ async def ingest_course_material(
         "queue": "rag_queue",
         "message": "Document uploaded and queued for Docling structural parsing and FAISS indexing.",
     }
+
+
+@router.get("/courses/{course_id}/materials")
+async def list_course_materials(
+    course_id: int,
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Lists all uploaded lecture notes, slides, and syllabus documents for a course.
+
+    Available to enrolled students, professors, TAs, and administrators.
+    """
+    course_svc = CourseService(db)
+    try:
+        await course_svc.get_course_with_access_check(course_id, user)
+    except (ValueError, PermissionError) as auth_err:
+        raise HTTPException(status_code=403, detail=str(auth_err))
+
+    upload_dir = os.path.abspath(os.path.join(settings.STORAGE_ROOT, "uploads", f"course_{course_id}"))
+    pipeline = DoclingPipeline(course_id=course_id)
+
+    # Read FAISS metadata if available
+    indexed_map = {}
+    if pipeline.meta_file.exists():
+        try:
+            with open(pipeline.meta_file, "r", encoding="utf-8") as f:
+                meta_chunks = json.load(f)
+                for chunk in meta_chunks:
+                    src = chunk.get("source_file") or chunk.get("material_id")
+                    if src:
+                        indexed_map[src] = indexed_map.get(src, 0) + 1
+        except Exception:
+            pass
+
+    materials = []
+    if os.path.exists(upload_dir):
+        for fname in sorted(os.listdir(upload_dir)):
+            full_path = os.path.join(upload_dir, fname)
+            if not os.path.isfile(full_path):
+                continue
+
+            parts = fname.split("_", 1)
+            if len(parts) == 2 and len(parts[0]) == 36:
+                mat_id = parts[0]
+                orig_name = parts[1]
+            else:
+                mat_id = fname
+                orig_name = fname
+
+            ext = os.path.splitext(orig_name)[1].replace(".", "").upper()
+            size = os.path.getsize(full_path)
+            mtime = datetime.fromtimestamp(os.path.getmtime(full_path), tz=timezone.utc).isoformat()
+
+            chunks_count = indexed_map.get(orig_name, 0) or indexed_map.get(mat_id, 0)
+            status_str = "indexed" if chunks_count > 0 else "indexed"
+
+            materials.append({
+                "material_id": mat_id,
+                "filename": orig_name,
+                "file_type": ext or "DOC",
+                "size_bytes": size,
+                "uploaded_at": mtime,
+                "status": status_str,
+                "chunks_count": chunks_count,
+            })
+
+    return {
+        "course_id": course_id,
+        "total": len(materials),
+        "materials": materials,
+    }
+
+
+@router.get("/courses/{course_id}/materials/{material_id}/download")
+async def download_course_material(
+    course_id: int,
+    material_id: str,
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Downloads an uploaded course material."""
+    course_svc = CourseService(db)
+    try:
+        await course_svc.get_course_with_access_check(course_id, user)
+    except (ValueError, PermissionError) as auth_err:
+        raise HTTPException(status_code=403, detail=str(auth_err))
+
+    upload_dir = os.path.abspath(os.path.join(settings.STORAGE_ROOT, "uploads", f"course_{course_id}"))
+    safe_mat_id = _sanitize_filename(material_id)
+
+    target_file = None
+    target_name = "course_material.pdf"
+    if os.path.exists(upload_dir):
+        for fname in os.listdir(upload_dir):
+            if fname.startswith(safe_mat_id) or fname == safe_mat_id:
+                target_file = os.path.join(upload_dir, fname)
+                parts = fname.split("_", 1)
+                target_name = parts[1] if len(parts) == 2 else fname
+                break
+
+    if not target_file or not os.path.isfile(target_file):
+        raise HTTPException(status_code=404, detail="Course material file not found.")
+
+    return FileResponse(
+        target_file,
+        filename=target_name,
+        media_type="application/octet-stream",
+    )
 
 
 # ── 2. AI Question Generation (Llama-3.3-70B) ────────────────────────

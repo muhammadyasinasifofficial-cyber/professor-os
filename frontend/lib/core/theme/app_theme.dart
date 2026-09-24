@@ -24,7 +24,7 @@ class AppColors {
   static const Color inkPrimary   = Color(0xFFEEEEF0); // all primary text
   static const Color inkSecondary = Color(0xFF9090A0); // metadata, labels, captions
   static const Color inkGhost     = Color(0xFF55555F); // placeholders, disabled only
-  static const Color inkAccent    = Color(0xFFC8D0FF); // links, active nav item (TEXT ONLY)
+  static const Color inkAccent    = Color(0xFFE4E4E7); // links, active nav item (bone/silver text only)
   
   // ── Status pairs (ALWAYS use bg + ink together) ───────────────
   static const Color statusPassBg       = Color(0xFF0D2B1A);
@@ -52,25 +52,25 @@ class AppColors {
   static const Color marginRule   = rule;
   static const Color borderStrong = ruleStrong;
   static const Color border       = rule;
-  static const Color borderFocus  = inkAccent;
+  static const Color borderFocus  = inkPrimary;
 
   static const Color feedbackRed  = statusCriticalInk;
   static const Color verified     = statusPassInk;
   static const Color pending      = statusPendingInk;
-  static const Color signal       = inkAccent;
+  static const Color signal       = inkPrimary;
 
   static const Color primary       = inkPrimary;
   static const Color emerald       = statusPassInk;
-  static const Color primaryIndigo = inkAccent;
-  static const Color primaryCyan   = inkAccent;
-  static const Color primaryViolet = inkAccent;
-  static const Color primaryMid    = inkAccent;
+  static const Color primaryIndigo = inkPrimary;
+  static const Color primaryCyan   = inkPrimary;
+  static const Color primaryViolet = inkPrimary;
+  static const Color primaryMid    = inkPrimary;
   static const Color primarySoft   = surfaceMid;
   static const Color successGreen  = statusPassInk;
   static const Color dangerRose    = statusCriticalInk;
   static const Color accentAmber   = statusPendingInk;
-  static const Color accentCyan    = inkAccent;
-  static const Color accentPink    = inkAccent;
+  static const Color accentCyan    = inkPrimary;
+  static const Color accentPink    = inkPrimary;
 
   static const Color heroBg        = canvas;
   static const Color heroBg2       = canvas;
@@ -109,7 +109,7 @@ class AppColorsLight {
   static const Color inkPrimary   = Color(0xFF161614);
   static const Color inkSecondary = Color(0xFF6A6A62);
   static const Color inkGhost     = Color(0xFFA0A099);
-  static const Color inkAccent    = Color(0xFF1A3A9C);
+  static const Color inkAccent    = Color(0xFF1E293B);
   static const Color statusPassBg       = Color(0xFFD6EFE2);
   static const Color statusPassInk      = Color(0xFF1A6B3A);
   static const Color statusPendingBg    = Color(0xFFF5E9CE);

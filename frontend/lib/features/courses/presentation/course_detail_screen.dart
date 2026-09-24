@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/journal_ui/journal_components.dart';
 import '../../../shared/widgets/prof_badge.dart';
 import '../../../shared/widgets/prof_card.dart';
 import '../../../shared/widgets/prof_shimmer.dart';
@@ -32,7 +33,10 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen>
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 3, vsync: this);
+    final role =
+        ref.read(authProvider).valueOrNull?['role'] as String? ?? 'student';
+    final isProf = role == 'professor' || role == 'admin';
+    _tabCtrl = TabController(length: isProf ? 4 : 2, vsync: this);
   }
 
   @override
@@ -215,43 +219,51 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen>
             ),
           ],
         ],
-        bottom: isProf
-            ? TabBar(
-                controller: _tabCtrl,
-                isScrollable: true,
-                labelColor: AppColors.inkPrimary,
-                unselectedLabelColor: AppColors.inkSecondary,
-                indicatorSize: TabBarIndicatorSize.label,
-                indicator: const UnderlineTabIndicator(
-                  borderSide: BorderSide(color: AppColors.signal, width: 2),
-                ),
-                labelStyle: GoogleFonts.inter(
-                    fontWeight: FontWeight.w600, fontSize: 14),
-                unselectedLabelStyle: GoogleFonts.inter(
-                    fontWeight: FontWeight.w500, fontSize: 14),
-                tabs: const [
+        bottom: TabBar(
+          controller: _tabCtrl,
+          isScrollable: true,
+          labelColor: AppColors.inkPrimary,
+          unselectedLabelColor: AppColors.inkSecondary,
+          indicatorSize: TabBarIndicatorSize.label,
+          indicator: const UnderlineTabIndicator(
+            borderSide: BorderSide(color: AppColors.inkPrimary, width: 2),
+          ),
+          labelStyle: GoogleFonts.dmSans(
+              fontWeight: FontWeight.w600, fontSize: 14),
+          unselectedLabelStyle: GoogleFonts.dmSans(
+              fontWeight: FontWeight.w500, fontSize: 14),
+          tabs: isProf
+              ? const [
                   Tab(text: 'Assignments'),
+                  Tab(text: 'Materials'),
                   Tab(text: 'Students Roster'),
                   Tab(text: 'Course Settings'),
+                ]
+              : const [
+                  Tab(text: 'Assignments'),
+                  Tab(text: 'Materials'),
                 ],
-              )
-            : null,
+        ),
       ),
       body: courseAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
             child: Text(ErrorParser.parse(e),
                 style: const TextStyle(color: AppColors.dangerRose))),
-        data: (course) => isProf
-            ? TabBarView(
-                controller: _tabCtrl,
-                children: [
-                  _AssignmentsTab(courseId: widget.courseId, isProf: isProf),
-                  _StudentsTab(courseId: widget.courseId, isProf: isProf),
+        data: (course) => TabBarView(
+          controller: _tabCtrl,
+          children: isProf
+              ? [
+                  _AssignmentsTab(courseId: widget.courseId, isProf: true),
+                  _MaterialsTab(courseId: widget.courseId, isProf: true),
+                  _StudentsTab(courseId: widget.courseId, isProf: true),
                   _SettingsTab(course: course),
+                ]
+              : [
+                  _AssignmentsTab(courseId: widget.courseId, isProf: false),
+                  _MaterialsTab(courseId: widget.courseId, isProf: false),
                 ],
-              )
-            : _AssignmentsTab(courseId: widget.courseId, isProf: false),
+        ),
       ),
       floatingActionButton: isProf
           ? FloatingActionButton.extended(
@@ -1305,11 +1317,12 @@ class _CourseAiChatDialogState extends State<CourseAiChatDialog> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.signal.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(10),
+                      color: AppColors.surfaceMid,
+                      borderRadius: BorderRadius.circular(AppRadius.r4),
+                      border: Border.all(color: AppColors.rule, width: 1),
                     ),
                     child: const Icon(Icons.psychology,
-                        color: AppColors.signal, size: 22),
+                        color: AppColors.inkPrimary, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1317,9 +1330,9 @@ class _CourseAiChatDialogState extends State<CourseAiChatDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('AI Teaching Assistant',
-                            style: GoogleFonts.outfit(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
+                            style: GoogleFonts.dmSans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
                                 color: AppColors.inkPrimary)),
                         Text(widget.courseTitle,
                             maxLines: 1,
@@ -1458,10 +1471,10 @@ class _CourseAiChatDialogState extends State<CourseAiChatDialog> {
                   FilledButton(
                     onPressed: _loading ? null : () => _sendMessage(),
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.signal,
-                      foregroundColor: Colors.white,
+                      backgroundColor: AppColors.inkPrimary,
+                      foregroundColor: AppColors.canvas,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(AppRadius.r4)),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 14),
                     ),
@@ -1484,20 +1497,16 @@ class _CourseAiChatDialogState extends State<CourseAiChatDialog> {
           margin: const EdgeInsets.only(bottom: 14, left: 60),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: AppColors.signal,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(14),
-              topRight: Radius.circular(14),
-              bottomLeft: Radius.circular(14),
-              bottomRight: Radius.circular(4),
-            ),
+            color: AppColors.surfaceMid,
+            borderRadius: BorderRadius.circular(AppRadius.r4),
+            border: Border.all(color: AppColors.ruleStrong, width: 1),
           ),
           child: SelectableText(
             msg.text,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.dmSans(
               fontSize: 14,
-              color: Colors.white,
-              height: 1.45,
+              color: AppColors.inkPrimary,
+              height: 1.5,
             ),
           ),
         ),
@@ -1513,21 +1522,9 @@ class _CourseAiChatDialogState extends State<CourseAiChatDialog> {
         margin: const EdgeInsets.only(bottom: 16, right: 40),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.bgSurface,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(14),
-            topRight: Radius.circular(14),
-            bottomLeft: Radius.circular(4),
-            bottomRight: Radius.circular(14),
-          ),
-          border: Border.all(color: AppColors.border),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.r4),
+          border: Border.all(color: AppColors.rule, width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1657,6 +1654,212 @@ class _CourseAiChatDialogState extends State<CourseAiChatDialog> {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Materials Tab (Lecture Slides, Notes & RAG Knowledge) ─────────────
+class _MaterialsTab extends ConsumerWidget {
+  final int courseId;
+  final bool isProf;
+
+  const _MaterialsTab({required this.courseId, required this.isProf});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final materialsAsync = ref.watch(courseMaterialsProvider(courseId));
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Course Lecture Materials',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.inkPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Parsed by IBM Docling into our FAISS vector store. Used by Ask Course AI.',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      color: AppColors.inkSecondary,
+                    ),
+                  ),
+                ],
+              ),
+              if (isProf)
+                SecondaryButton(
+                  label: '+ Upload Lecture File',
+                  onPressed: () async {
+                    final result = await FilePicker.platform.pickFiles(
+                      type: FileType.custom,
+                      allowedExtensions: ['pdf', 'pptx', 'docx', 'txt', 'md'],
+                      withData: true,
+                    );
+                    final file = result?.files.single;
+                    if (file == null || file.bytes == null) return;
+                    try {
+                      final response = await CourseRepository().ingestCourseMaterial(
+                        courseId,
+                        file.bytes!.toList(),
+                        file.name,
+                      );
+                      ref.invalidate(courseMaterialsProvider(courseId));
+                      if (context.mounted) {
+                        JournalToastManager.show(
+                          context,
+                          'Material uploaded and queued for AI indexing',
+                          secondary: file.name,
+                          status: ToastStatus.pass,
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        JournalToastManager.show(
+                          context,
+                          'Upload failed',
+                          secondary: ErrorParser.parse(e),
+                          status: ToastStatus.critical,
+                        );
+                      }
+                    }
+                  },
+                ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const Divider(color: AppColors.rule, height: 1),
+          const SizedBox(height: 16),
+
+          materialsAsync.when(
+            loading: () => const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: Text('Loading course materials…',
+                    style: TextStyle(color: AppColors.inkGhost)),
+              ),
+            ),
+            error: (e, _) => Center(
+              child: Text(ErrorParser.parse(e),
+                  style: const TextStyle(color: AppColors.statusCriticalInk)),
+            ),
+            data: (materials) {
+              if (materials.isEmpty) {
+                return Container(
+                  padding: const EdgeInsets.all(40),
+                  alignment: Alignment.center,
+                  child: Column(
+                    children: [
+                      Text(
+                        'No lecture materials uploaded yet.',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 15,
+                          color: AppColors.inkSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        isProf
+                            ? 'Upload lecture PDFs or slides so students can review them and Course AI can answer from them.'
+                            : 'Your instructor has not uploaded lecture documents yet.',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 13,
+                          color: AppColors.inkGhost,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: materials.length,
+                separatorBuilder: (_, __) =>
+                    const Divider(color: AppColors.rule, height: 1),
+                itemBuilder: (ctx, i) {
+                  final mat = materials[i];
+                  final filename = mat['filename']?.toString() ?? 'Document';
+                  final fileType = mat['file_type']?.toString() ?? 'DOC';
+                  final sizeBytes = mat['size_bytes'] as int? ?? 0;
+                  final sizeMb = (sizeBytes / (1024 * 1024)).toStringAsFixed(1);
+                  final chunksCount = mat['chunks_count'] as int? ?? 0;
+                  final status = mat['status']?.toString() ?? 'indexed';
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    child: Row(
+                      children: [
+                        StampBadge(
+                          label: fileType,
+                          type: StampType.neutral,
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                filename,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.inkPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Text(
+                                    '$sizeMb MB',
+                                    style: GoogleFonts.jetBrainsMono(
+                                      fontSize: 12,
+                                      color: AppColors.inkGhost,
+                                    ),
+                                  ),
+                                  if (chunksCount > 0) ...[
+                                    const Text('  ·  ',
+                                        style: TextStyle(color: AppColors.inkGhost)),
+                                    Text(
+                                      '$chunksCount AI Knowledge Chunks',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 12,
+                                        color: AppColors.inkSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        StampBadge(
+                          label: status == 'indexed' ? 'Indexed' : 'Indexing…',
+                          type: status == 'indexed'
+                              ? StampType.pass
+                              : StampType.pending,
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ],
       ),
     );
   }

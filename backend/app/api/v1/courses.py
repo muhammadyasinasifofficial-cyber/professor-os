@@ -17,7 +17,7 @@ from app.schemas.course import (
 )
 from app.services.course_service import CourseService
 from app.services.document_ingestion import DoclingPipeline
-from app.services.intent_router import LocalIntentRouter
+from app.services.intent_router import LocalIntentRouter, get_intent_router
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
 
@@ -330,7 +330,7 @@ async def chat_with_course(
     # 1. Local Semantic Intent Routing (< 35ms)
     intent_detected = "COURSE_QA"
     try:
-        router_svc = LocalIntentRouter()
+        router_svc = get_intent_router()
         routing_res = router_svc.route(body.message)
         intent_detected = routing_res.intent.value
     except Exception:

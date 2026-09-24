@@ -961,37 +961,43 @@ class _AssignmentDetailScreenState
     final assignmentType =
         _assignment?['type']?.toString().toLowerCase() ?? 'text';
     final timeLimitMinutes = _assignment?['time_limit_minutes'] as int?;
-    final isExamMode = timeLimitMinutes != null && timeLimitMinutes > 0;
+    final isQuizOrExam = assignmentType == 'quiz' ||
+        assignmentType == 'exam' ||
+        (timeLimitMinutes != null && timeLimitMinutes > 0);
 
-    if (!hasSubmitted && isExamMode) {
+    if (!hasSubmitted && isQuizOrExam) {
+      final isQuiz = assignmentType == 'quiz';
       return ProfCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Timed Exam',
-                style: GoogleFonts.outfit(
-                    fontSize: 20, fontWeight: FontWeight.w600)),
+            Text(isQuiz ? 'Quiz Assessment' : 'Timed Examination',
+                style: GoogleFonts.dmSans(
+                    fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.inkPrimary)),
             const SizedBox(height: 8),
             Text(
-              'This is a timed exam ($timeLimitMinutes minutes). Once you start, the timer begins and the exam is fullscreen-locked.',
-              style: GoogleFonts.inter(
-                  color: AppColors.textSecondary, height: 1.5),
+              isQuiz
+                  ? 'This is an academic quiz assessment with structured questions. Click below to begin your attempt.'
+                  : 'This is a timed examination (${timeLimitMinutes ?? 60} minutes). Once you start, the assessment begins and fullscreen focus mode is active.',
+              style: GoogleFonts.dmSans(
+                  color: AppColors.inkSecondary, height: 1.5),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
+            const SizedBox(height: 24),
+            PrimaryButton(
+              label: isQuiz ? 'Start Quiz Assessment' : 'Start Exam (${timeLimitMinutes ?? 60} min)',
               onPressed: () {
                 Navigator.of(context)
                     .push(MaterialPageRoute(
                       builder: (_) => ExamScreen(
                         courseId: widget.courseId,
                         assignmentId: widget.assignmentId,
-                        assignmentTitle: _assignment!['title'] ?? 'Exam',
-                        assignmentType: _assignment!['type'] ?? 'text',
+                        assignmentTitle: _assignment!['title'] ?? 'Assessment',
+                        assignmentType: isQuiz ? 'mcq' : (_assignment!['type'] ?? 'text'),
                         description: _assignment!['description'],
                         maxMarks:
                             (_assignment!['max_marks'] as num?)?.toDouble() ??
                                 100.0,
-                        timeLimitMinutes: timeLimitMinutes,
+                        timeLimitMinutes: timeLimitMinutes ?? (isQuiz ? 30 : 60),
                         randomizeQuestions:
                             _assignment!['randomize_questions'] as bool? ??
                                 false,
@@ -1001,16 +1007,6 @@ class _AssignmentDetailScreenState
                     ))
                     .then((_) => _loadSubmissions());
               },
-              icon: const Icon(Icons.play_arrow_rounded),
-              label: Text('Start Exam ($timeLimitMinutes min)',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryIndigo,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 52),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
             ),
           ],
         ),

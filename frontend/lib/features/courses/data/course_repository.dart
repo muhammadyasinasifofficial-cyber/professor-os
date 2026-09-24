@@ -281,4 +281,25 @@ class CourseRepository {
     final response = await _dio.get(ApiConstants.examAttempts(courseId, aid));
     return response.data as List<dynamic>;
   }
+
+  // ── Course Materials (Docling / RAG Ingestion) ──
+
+  Future<List<Map<String, dynamic>>> getCourseMaterials(int courseId) async {
+    final response = await _dio.get(ApiConstants.courseMaterials(courseId));
+    final data = response.data as Map<String, dynamic>;
+    final raw = data['materials'] as List<dynamic>? ?? [];
+    return raw.map((m) => Map<String, dynamic>.from(m as Map)).toList();
+  }
+
+  Future<Map<String, dynamic>> uploadCourseMaterial(
+      int courseId, List<int> bytes, String filename) async {
+    final formData = FormData.fromMap({
+      'file': MultipartFile.fromBytes(bytes, filename: filename),
+    });
+    final response = await _dio.post(
+      ApiConstants.uploadCourseMaterial(courseId),
+      data: formData,
+    );
+    return response.data as Map<String, dynamic>;
+  }
 }

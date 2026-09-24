@@ -83,8 +83,8 @@ class LLMClient:
             ),
             LLMPipeline.RAG: PipelineSpec(
                 pipeline=LLMPipeline.RAG,
-                primary_model=getattr(self.settings, "MODEL_RAG_PRIMARY", "ibm-granite-3-1-8b-instruct"),
-                fallback_model=getattr(self.settings, "MODEL_RAG_FALLBACK", "ibm/granite-3-1-8b-instruct"),
+                primary_model=getattr(self.settings, "MODEL_RAG_PRIMARY", "llama-3.1-8b-instant"),
+                fallback_model=getattr(self.settings, "MODEL_RAG_FALLBACK", "meta-llama/llama-3.1-8b-instruct"),
                 temperature=0.2,
                 max_tokens=1024,
             ),

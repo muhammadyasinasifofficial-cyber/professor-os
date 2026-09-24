@@ -446,7 +446,7 @@ class _JournalNavItem extends StatelessWidget {
             color: isSelected ? AppColors.surfaceMid : Colors.transparent,
             border: Border(
               left: BorderSide(
-                color: isSelected ? AppColors.inkAccent : Colors.transparent,
+                color: isSelected ? AppColors.inkPrimary : Colors.transparent,
                 width: 2,
               ),
             ),

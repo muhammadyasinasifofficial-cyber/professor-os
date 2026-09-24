@@ -75,8 +75,8 @@ class Settings(BaseSettings):
     GRADING_MODEL_DEV: Optional[str] = None  # e.g. "llama-3.1-8b-instant" to save quota in development
 
     # ── Pipeline 2: RAG / AI Teaching Assistant (High Speed + Grounded) ─
-    MODEL_RAG_PRIMARY: str = "ibm-granite-3-1-8b-instruct"
-    MODEL_RAG_FALLBACK: str = "ibm/granite-3-1-8b-instruct"
+    MODEL_RAG_PRIMARY: str = "llama-3.1-8b-instant"
+    MODEL_RAG_FALLBACK: str = "meta-llama/llama-3.1-8b-instruct"
 
     # ── Pipeline 3: Question Generation (Pedagogical Quality & Structure)
     MODEL_QUESTION_GEN_PRIMARY: str = "llama-3.3-70b-versatile"

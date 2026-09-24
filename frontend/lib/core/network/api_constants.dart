@@ -63,6 +63,10 @@ class ApiConstants {
   static String courseClos(int id) => '/courses/$id/clos';
   static String courseAssignments(int id) => '/courses/$id/assignments';
   static String courseAnalytics(int id) => '/courses/$id/analytics';
+  static String courseMaterials(int id) => '/courses/$id/materials';
+  static String uploadCourseMaterial(int id) => '/courses/$id/materials/ingest';
+  static String downloadCourseMaterial(int id, String matId) =>
+      '/courses/$id/materials/$matId/download';
 
   // ── Assignments ────────────────────────────────────
   static String assignment(int courseId, int aid) =>
