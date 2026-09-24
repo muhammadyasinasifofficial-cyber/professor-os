@@ -111030,7 +111030,7 @@ $S:0}
 A.aG8.prototype={
 $0(){var s=this.a,r=s.d
 B.b.ab(r)
-r.push(new A.qB(!1,"Chat cleared! How can I help you with **"+s.a.d+"**?",new A.d9(Date.now(),0,!1),B.k6))},
+r.push(new A.qB(!1,"Chat cleared! How can I help you with "+s.a.d+"?",new A.d9(Date.now(),0,!1),B.k6))},
 $S:0}
 A.aGe.prototype={
 $0(){A.bJ(this.a,!1).c4(null)

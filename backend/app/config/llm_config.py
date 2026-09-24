@@ -97,8 +97,8 @@ class LLMClient:
             ),
         }
 
-        # Timeouts (seconds)
-        self.timeout = httpx.Timeout(connect=15.0, read=90.0, write=20.0, pool=15.0)
+        # Timeouts (seconds) - responsive for interactive chat & grading
+        self.timeout = httpx.Timeout(connect=5.0, read=20.0, write=10.0, pool=10.0)
 
     def _get_provider_endpoint(self, provider: LLMProvider) -> Dict[str, str]:
         """Resolves base URL and authorization headers for the given provider."""

@@ -1241,7 +1241,7 @@ class _CourseAiChatDialogState extends State<CourseAiChatDialog> {
         CourseChatMessage(
           isUser: false,
           text:
-              'Chat cleared! How can I help you with **${widget.courseTitle}**?',
+              'Chat cleared! How can I help you with ${widget.courseTitle}?',
           timestamp: DateTime.now(),
         ),
       );
