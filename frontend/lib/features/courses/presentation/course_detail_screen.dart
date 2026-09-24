@@ -13,6 +13,7 @@ import '../../../shared/widgets/hec_weightage_widget.dart';
 import '../../../shared/widgets/prof_confirm_sheet.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/utils/error_parser.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../data/course_repository.dart';
 import '../providers/course_providers.dart';
 
@@ -69,6 +70,29 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen>
               'Material queued for AI indexing.'),
           backgroundColor: AppColors.successGreen,
         ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(ErrorParser.parse(e)),
+          backgroundColor: AppColors.dangerRose,
+        ));
+      }
+    }
+  }
+
+  Future<void> _openAIQuizAndOBE() async {
+    final uri = Uri.parse('/static_assets/react/index.html?courseId=${widget.courseId}');
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Unable to launch AI Quiz & OBE portal.'),
+            backgroundColor: AppColors.dangerRose,
+          ));
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -198,6 +222,22 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen>
               tooltip: 'Upload course material',
               icon: const Icon(Icons.upload_file_rounded),
               onPressed: _uploadCourseMaterial,
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilledButton.icon(
+                icon: const Icon(Icons.auto_awesome, size: 16),
+                label: isNarrow
+                    ? const SizedBox.shrink()
+                    : const Text('AI Quiz & OBE'),
+                onPressed: _openAIQuizAndOBE,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.signal,
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                ),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.only(right: 8),

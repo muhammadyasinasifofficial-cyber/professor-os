@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_parser.dart';
 import '../../../shared/widgets/prof_empty_state.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../data/course_repository.dart';
 import '../providers/course_providers.dart';
 
 class CourseListScreen extends ConsumerStatefulWidget {
@@ -16,6 +18,91 @@ class CourseListScreen extends ConsumerStatefulWidget {
 
 class _CourseListScreenState extends ConsumerState<CourseListScreen> {
   String _filter = 'active'; // 'active', 'archived'
+
+  Future<void> _showJoinCourseDialog(BuildContext context) async {
+    final codeCtrl = TextEditingController();
+    var loading = false;
+    var error = '';
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Join Course'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Enter the 6-character code provided by your instructor:'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: codeCtrl,
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 6,
+                decoration: const InputDecoration(
+                  labelText: 'Course Code',
+                  hintText: 'e.g. A1B2C3',
+                ),
+              ),
+              if (error.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(error,
+                    style: const TextStyle(
+                        color: AppColors.feedbackRed, fontSize: 13)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: loading ? null : () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: loading
+                  ? null
+                  : () async {
+                      final code = codeCtrl.text.trim().toUpperCase();
+                      if (code.length < 4) {
+                        setDialogState(() => error = 'Enter a valid join code');
+                        return;
+                      }
+                      setDialogState(() {
+                        loading = true;
+                        error = '';
+                      });
+                      try {
+                        await CourseRepository().joinCourse(code);
+                        if (context.mounted) {
+                          ref.invalidate(courseListProvider);
+                          Navigator.pop(dialogCtx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Successfully joined course!'),
+                              backgroundColor: AppColors.verified,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() {
+                          error = ErrorParser.parse(e);
+                          loading = false;
+                        });
+                      }
+                    },
+              child: loading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : const Text('Join'),
+            ),
+          ],
+        ),
+      ),
+    );
+    codeCtrl.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +144,18 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
                   ],
                 );
 
+                final actionButton = isProf
+                    ? ElevatedButton.icon(
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: const Text('Create Course'),
+                        onPressed: () => context.go('/courses/new'),
+                      )
+                    : ElevatedButton.icon(
+                        icon: const Icon(Icons.group_add_rounded, size: 18),
+                        label: const Text('Join with Code'),
+                        onPressed: () => _showJoinCourseDialog(context),
+                      );
+
                 return Padding(
                   padding: EdgeInsets.fromLTRB(
                     isNarrow ? 20 : 40,
@@ -69,26 +168,15 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             heading,
-                            if (isAdmin) ...[
-                              const SizedBox(height: 18),
-                              ElevatedButton.icon(
-                                icon: const Icon(Icons.add_rounded, size: 18),
-                                label: const Text('Create Course'),
-                                onPressed: () => context.go('/courses/new'),
-                              ),
-                            ],
+                            const SizedBox(height: 18),
+                            actionButton,
                           ],
                         )
                       : Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Expanded(child: heading),
-                            if (isAdmin)
-                              ElevatedButton.icon(
-                                icon: const Icon(Icons.add_rounded, size: 18),
-                                label: const Text('Create Course'),
-                                onPressed: () => context.go('/courses/new'),
-                              ),
+                            actionButton,
                           ],
                         ),
                 );

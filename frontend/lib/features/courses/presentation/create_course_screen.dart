@@ -189,8 +189,9 @@ class _CreateCourseScreenState extends ConsumerState<CreateCourseScreen> {
     final role =
         ref.watch(authProvider).valueOrNull?['role'] as String? ?? 'student';
     final isAdmin = role == 'admin';
+    final canManage = role == 'admin' || role == 'professor';
 
-    if (widget.courseId == null && !isAdmin) {
+    if (widget.courseId == null && !canManage) {
       return Scaffold(
         backgroundColor: AppColors.bgPage,
         appBar: AppBar(
@@ -208,11 +209,11 @@ class _CreateCourseScreenState extends ConsumerState<CreateCourseScreen> {
               const Icon(Icons.lock_outline_rounded,
                   size: 64, color: AppColors.dangerRose),
               const SizedBox(height: 16),
-              Text('Admin Permission Required',
+              Text('Faculty Permission Required',
                   style: GoogleFonts.outfit(
                       fontSize: 22, fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
-              Text('Only system administrators can create new courses.',
+              Text('Only faculty members and administrators can create new courses.',
                   style: GoogleFonts.inter(
                       fontSize: 14, color: AppColors.textMuted)),
               const SizedBox(height: 24),
@@ -370,6 +371,10 @@ class _CreateCourseScreenState extends ConsumerState<CreateCourseScreen> {
   }
 
   Widget _buildStep1() {
+    final role =
+        ref.watch(authProvider).valueOrNull?['role'] as String? ?? 'student';
+    final isAdmin = role == 'admin';
+
     return ProfCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -401,40 +406,66 @@ class _CreateCourseScreenState extends ConsumerState<CreateCourseScreen> {
               )),
             ],
           ),
-          const SizedBox(height: 28),
-          Consumer(
-            builder: (context, ref, child) {
-              final profsAsync = ref.watch(professorsListProvider);
-              return profsAsync.when(
-                loading: () => const LinearProgressIndicator(
-                    color: AppColors.primaryIndigo),
-                error: (e, _) => Text('Error loading professors: $e',
-                    style: const TextStyle(color: AppColors.dangerRose)),
-                data: (profs) {
-                  return DropdownButtonFormField<int>(
-                    value: _selectedProfessorId,
-                    validator: (v) =>
-                        v == null ? 'Select an assigned professor' : null,
-                    decoration: const InputDecoration(
-                      labelText: 'Assigned Professor',
-                      hintText: 'Select professor...',
-                    ),
-                    items: profs.map<DropdownMenuItem<int>>((p) {
-                      final id = p['id'] as int;
-                      final name =
-                          p['full_name'] as String? ?? p['email'] as String;
-                      return DropdownMenuItem<int>(
-                        value: id,
-                        child: Text(name),
-                      );
-                    }).toList(),
-                    onChanged: (val) =>
-                        setState(() => _selectedProfessorId = val),
-                  );
-                },
-              );
-            },
-          ),
+          if (isAdmin) ...[
+            const SizedBox(height: 28),
+            Consumer(
+              builder: (context, ref, child) {
+                final profsAsync = ref.watch(professorsListProvider);
+                return profsAsync.when(
+                  loading: () => const LinearProgressIndicator(
+                      color: AppColors.primaryIndigo),
+                  error: (e, _) => Text('Error loading professors: $e',
+                      style: const TextStyle(color: AppColors.dangerRose)),
+                  data: (profs) {
+                    return DropdownButtonFormField<int>(
+                      value: _selectedProfessorId,
+                      validator: (v) =>
+                          v == null ? 'Select an assigned professor' : null,
+                      decoration: const InputDecoration(
+                        labelText: 'Assigned Professor',
+                        hintText: 'Select professor...',
+                      ),
+                      items: profs.map<DropdownMenuItem<int>>((p) {
+                        final id = p['id'] as int;
+                        final name =
+                            p['full_name'] as String? ?? p['email'] as String;
+                        return DropdownMenuItem<int>(
+                          value: id,
+                          child: Text(name),
+                        );
+                      }).toList(),
+                      onChanged: (val) =>
+                          setState(() => _selectedProfessorId = val),
+                    );
+                  },
+                );
+              },
+            ),
+          ] else ...[
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.primaryIndigo.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: AppColors.primaryIndigo.withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.person_outline_rounded,
+                      size: 20, color: AppColors.primaryIndigo),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Instructor: ${ref.watch(authProvider).valueOrNull?['full_name'] ?? 'You (Course Instructor)'}',
+                    style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
           TextFormField(
             controller: _titleCtrl,
