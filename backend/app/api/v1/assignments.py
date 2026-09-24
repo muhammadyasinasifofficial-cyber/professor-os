@@ -35,9 +35,12 @@ async def list_assignments(
         
         svc = AssignmentService(db)
         assignments = await svc.list_assignments(course_id, status)
-        if user.role == "ta":
+        role = getattr(user.role, "value", user.role)
+        if role == "ta":
             delegated_ids = await svc.delegated_ta_ids_for_user(course_id, user.id)
             assignments = [a for a in assignments if a.id in delegated_ids]
+        elif role == "student":
+            assignments = [a for a in assignments if (a.status or "").lower() != "draft"]
         # Apply pagination
         total = len(assignments)
         start = (page - 1) * page_size

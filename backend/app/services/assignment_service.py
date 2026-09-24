@@ -80,13 +80,32 @@ class AssignmentService:
         )
         return {row[0] for row in result.all()}
 
+    async def enrolled_student_ids(self, course_id: int) -> set[int]:
+        result = await self.db.execute(
+            select(Enrollment.user_id).where(
+                Enrollment.course_id == course_id,
+            )
+        )
+        return {row[0] for row in result.all()}
+
     async def verify_assignment_access(self, assignment_id: int, user: User) -> Assignment:
         assignment = await self.get_assignment(assignment_id)
+        role = getattr(user.role, "value", user.role)
+        enrolled_students = None
+        if role == "student":
+            enrolled_students = await self.enrolled_student_ids(assignment.course_id)
+            if user.id not in enrolled_students:
+                raise PermissionError("You are not enrolled in this course.")
+            if (assignment.status or "").lower() == "draft":
+                raise PermissionError("Assignment is not yet published.")
+            return assignment
+
         if not can_access_assignment(
             user_role=user.role,
             user_id=user.id,
             assignment=assignment,
             delegated_ta_ids=await self.delegated_ta_ids(assignment_id),
+            enrolled_student_ids=enrolled_students,
         ):
             raise PermissionError("You are not assigned to this assignment.")
         return assignment

@@ -28,21 +28,21 @@ class CourseService:
             result = await self.db.execute(
                 select(Course).options(*options).order_by(Course.created_at.desc())
             )
-            return list(result.scalars().all())
+            return list(result.scalars().unique().all())
         if user.role == "professor":
             result = await self.db.execute(
                 select(Course).options(*options)
                 .where(Course.professor_id == user.id)
                 .order_by(Course.created_at.desc())
             )
-            return list(result.scalars().all())
+            return list(result.scalars().unique().all())
         result = await self.db.execute(
             select(Course).options(*options)
             .join(Enrollment)
             .where(Enrollment.user_id == user.id)
             .order_by(Course.created_at.desc())
         )
-        return list(result.scalars().all())
+        return list(result.scalars().unique().all())
 
     async def create_course(self, data: CourseCreate, professor_id: int) -> Course:
         # Validate that professor_id belongs to an approved professor

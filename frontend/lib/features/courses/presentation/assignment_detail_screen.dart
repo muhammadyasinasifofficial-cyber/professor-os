@@ -532,9 +532,9 @@ class _AssignmentDetailScreenState
     if (_assignment == null) return const SizedBox.shrink();
 
     final a = _assignment!;
-    final isProf =
-        ref.watch(authProvider).valueOrNull?['role'] == 'professor' ||
-            ref.watch(authProvider).valueOrNull?['role'] == 'admin';
+    final role =
+        ref.watch(authProvider).valueOrNull?['role'] as String? ?? 'student';
+    final isProf = role == 'professor' || role == 'admin' || role == 'ta';
 
     return Scaffold(
       backgroundColor: AppColors.bgPage,

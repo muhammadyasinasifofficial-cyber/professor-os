@@ -30,6 +30,8 @@ async def _verify_student_assignment(course_id: int, aid: int, user: User, db: A
     assignment = await db.get(Assignment, aid)
     if not assignment or assignment.course_id != course_id:
         raise HTTPException(status_code=404, detail="Assignment not found.")
+    if (assignment.status or "").lower() == "draft":
+        raise HTTPException(status_code=403, detail="Assignment is not yet published.")
     try:
         await CourseService(db).get_course_with_access_check(course_id, user)
     except (ValueError, PermissionError) as exc:
