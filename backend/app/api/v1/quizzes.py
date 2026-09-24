@@ -51,7 +51,7 @@ from app.services.clo_attainment import (
     CourseAttainmentReport,
     compute_and_record_attainment,
 )
-from app.services.document_ingestion import ingest_course_document_task
+from app.services.document_ingestion import DoclingPipeline, ingest_course_document_task
 from app.services.question_generation import generate_questions_task
 
 router = APIRouter(tags=["AI Assessments & OBE Quizzes"])
@@ -282,20 +282,18 @@ async def list_course_materials(
         raise HTTPException(status_code=403, detail=str(auth_err))
 
     upload_dir = os.path.abspath(os.path.join(settings.STORAGE_ROOT, "uploads", f"course_{course_id}"))
-    pipeline = DoclingPipeline(course_id=course_id)
-
-    # Read FAISS metadata if available
     indexed_map = {}
-    if pipeline.meta_file.exists():
-        try:
+    try:
+        pipeline = DoclingPipeline(course_id=course_id)
+        if pipeline.meta_file.exists():
             with open(pipeline.meta_file, "r", encoding="utf-8") as f:
                 meta_chunks = json.load(f)
                 for chunk in meta_chunks:
                     src = chunk.get("source_file") or chunk.get("material_id")
                     if src:
                         indexed_map[src] = indexed_map.get(src, 0) + 1
-        except Exception:
-            pass
+    except Exception:
+        pass
 
     materials = []
     if os.path.exists(upload_dir):

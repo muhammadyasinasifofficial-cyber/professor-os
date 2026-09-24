@@ -37,52 +37,15 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen>
         ref.read(authProvider).valueOrNull?['role'] as String? ?? 'student';
     final isProf = role == 'professor' || role == 'admin';
     _tabCtrl = TabController(length: isProf ? 4 : 2, vsync: this);
+    _tabCtrl.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
     _tabCtrl.dispose();
     super.dispose();
-  }
-
-  Future<void> _uploadCourseMaterial() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf', 'pptx', 'docx', 'txt', 'md'],
-      withData: true,
-    );
-    final file = result?.files.single;
-    if (file == null || file.bytes == null) return;
-    if (file.size > 25 * 1024 * 1024) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Material exceeds the 25 MB limit.'),
-          backgroundColor: AppColors.dangerRose,
-        ));
-      }
-      return;
-    }
-    try {
-      final response = await CourseRepository().ingestCourseMaterial(
-        widget.courseId,
-        file.bytes!.toList(),
-        file.name,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(response['message']?.toString() ??
-              'Material queued for AI indexing.'),
-          backgroundColor: AppColors.successGreen,
-        ));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(ErrorParser.parse(e)),
-          backgroundColor: AppColors.dangerRose,
-        ));
-      }
-    }
   }
 
   Future<void> _openAIQuizAndOBE() async {
@@ -154,38 +117,35 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen>
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: FilledButton.icon(
+            child: OutlinedButton.icon(
               icon: const Icon(Icons.psychology, size: 16),
               label: isNarrow
                   ? const SizedBox.shrink()
                   : const Text('Ask Course AI'),
               onPressed: () => _showCourseChat(
                   courseAsync.valueOrNull?['title'] as String?),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.signal,
-                foregroundColor: Colors.white,
+              style: OutlinedButton.styleFrom(
+                backgroundColor: AppColors.surfaceMid,
+                foregroundColor: AppColors.inkPrimary,
+                side: const BorderSide(color: AppColors.ruleStrong),
                 padding: const EdgeInsets.symmetric(
                     horizontal: 12, vertical: 8),
               ),
             ),
           ),
           if (isProf) ...[
-            IconButton(
-              tooltip: 'Upload course material',
-              icon: const Icon(Icons.upload_file_rounded),
-              onPressed: _uploadCourseMaterial,
-            ),
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: FilledButton.icon(
+              child: OutlinedButton.icon(
                 icon: const Icon(Icons.auto_awesome, size: 16),
                 label: isNarrow
                     ? const SizedBox.shrink()
                     : const Text('AI Quiz & OBE'),
                 onPressed: _openAIQuizAndOBE,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.signal,
-                  foregroundColor: Colors.white,
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: AppColors.surfaceMid,
+                  foregroundColor: AppColors.inkPrimary,
+                  side: const BorderSide(color: AppColors.ruleStrong),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 ),
@@ -201,10 +161,11 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen>
                 onPressed: () =>
                     context.go('/courses/${widget.courseId}/analytics'),
                 style: OutlinedButton.styleFrom(
+                  backgroundColor: AppColors.surfaceMid,
                   foregroundColor: AppColors.inkPrimary,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  side: const BorderSide(color: AppColors.marginRule),
+                  side: const BorderSide(color: AppColors.ruleStrong),
                 ),
               ),
             ),
@@ -266,35 +227,46 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen>
         ),
       ),
       floatingActionButton: isProf
-          ? FloatingActionButton.extended(
-              onPressed: () =>
-                  context.go('/courses/${widget.courseId}/assignments/new'),
-              backgroundColor: AppColors.signal,
-              elevation: 0,
-              icon: const Icon(Icons.add_rounded, color: Colors.white),
-              label: Text('New Assignment',
-                  style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w600, color: Colors.white)),
-            )
+          ? (_tabCtrl.index == 0
+              ? FloatingActionButton.extended(
+                  onPressed: () =>
+                      context.go('/courses/${widget.courseId}/assignments/new'),
+                  backgroundColor: AppColors.inkPrimary,
+                  elevation: 0,
+                  icon: const Icon(Icons.add_rounded, color: AppColors.canvas),
+                  label: Text('New Assignment',
+                      style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w600, color: AppColors.canvas)),
+                )
+              : null)
           : FloatingActionButton.extended(
               onPressed: () =>
                   _showCourseChat(courseAsync.valueOrNull?['title'] as String?),
-              backgroundColor: AppColors.signal,
-              elevation: 2,
+              backgroundColor: AppColors.inkPrimary,
+              elevation: 0,
               icon:
-                  const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
-              label: const Text('Ask Course AI',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w700, color: Colors.white)),
+                  const Icon(Icons.auto_awesome, color: AppColors.canvas, size: 20),
+              label: Text('Ask Course AI',
+                  style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w700, color: AppColors.canvas)),
             ),
     );
   }
 }
 
-class _AssignmentsTab extends ConsumerWidget {
+class _AssignmentsTab extends ConsumerStatefulWidget {
   final int courseId;
   final bool isProf;
   const _AssignmentsTab({required this.courseId, required this.isProf});
+
+  @override
+  ConsumerState<_AssignmentsTab> createState() => _AssignmentsTabState();
+}
+
+class _AssignmentsTabState extends ConsumerState<_AssignmentsTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
 
   IconData _getAssignmentIcon(String type) {
     switch (type.toLowerCase()) {
@@ -313,17 +285,18 @@ class _AssignmentsTab extends ConsumerWidget {
     }
   }
 
-  Future<void> _showAssignTADialog(BuildContext context, WidgetRef ref,
-      int assignmentId, String title) async {
+  Future<void> _showAssignTADialog(
+      BuildContext context, int assignmentId, String title) async {
     try {
       final repo = CourseRepository();
-      final roster = await repo.listEnrollments(courseId);
+      final roster = await repo.listEnrollments(widget.courseId);
       final tas = roster
           .where((e) => (e['role'] ?? '').toString().toLowerCase() == 'ta')
           .toList();
-      final assigned = (await repo.listAssignmentTAs(courseId, assignmentId))
-          .map((e) => e['user_id'] as int)
-          .toSet();
+      final assigned =
+          (await repo.listAssignmentTAs(widget.courseId, assignmentId))
+              .map((e) => e['user_id'] as int)
+              .toSet();
       if (!context.mounted) return;
       final selected = Set<int>.from(assigned);
       final save = await showDialog<bool>(
@@ -370,10 +343,10 @@ class _AssignmentsTab extends ConsumerWidget {
       if (save != true) return;
       final current = assigned;
       for (final id in selected.difference(current)) {
-        await repo.assignTA(courseId, assignmentId, id);
+        await repo.assignTA(widget.courseId, assignmentId, id);
       }
       for (final id in current.difference(selected)) {
-        await repo.removeTA(courseId, assignmentId, id);
+        await repo.removeTA(widget.courseId, assignmentId, id);
       }
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -392,7 +365,10 @@ class _AssignmentsTab extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    super.build(context);
+    final courseId = widget.courseId;
+    final isProf = widget.isProf;
     final assignmentsAsync = ref.watch(assignmentListProvider(courseId));
     return assignmentsAsync.when(
       loading: () => ListView.separated(
@@ -475,8 +451,8 @@ class _AssignmentsTab extends ConsumerWidget {
                           icon: const Icon(Icons.group_add_rounded,
                               color: AppColors.primaryIndigo, size: 20),
                           tooltip: 'Assign Teaching Assistant',
-                          onPressed: () => _showAssignTADialog(context, ref,
-                              a['id'] as int, a['title'] as String),
+                          onPressed: () => _showAssignTADialog(
+                              context, a['id'] as int, a['title'] as String),
                         ),
                         if (status == 'draft')
                           Padding(
@@ -614,7 +590,11 @@ class _StudentsTab extends ConsumerStatefulWidget {
   ConsumerState<_StudentsTab> createState() => _StudentsTabState();
 }
 
-class _StudentsTabState extends ConsumerState<_StudentsTab> {
+class _StudentsTabState extends ConsumerState<_StudentsTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   final TextEditingController _searchCtrl = TextEditingController();
   String _query = '';
 
@@ -729,6 +709,7 @@ class _StudentsTabState extends ConsumerState<_StudentsTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final enrollmentsAsync =
         ref.watch(courseEnrollmentsProvider(widget.courseId));
     final courseAsync = ref.watch(courseDetailProvider(widget.courseId));
@@ -1660,14 +1641,26 @@ class _CourseAiChatDialogState extends State<CourseAiChatDialog> {
 }
 
 // ── Materials Tab (Lecture Slides, Notes & RAG Knowledge) ─────────────
-class _MaterialsTab extends ConsumerWidget {
+class _MaterialsTab extends ConsumerStatefulWidget {
   final int courseId;
   final bool isProf;
 
   const _MaterialsTab({required this.courseId, required this.isProf});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_MaterialsTab> createState() => _MaterialsTabState();
+}
+
+class _MaterialsTabState extends ConsumerState<_MaterialsTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final courseId = widget.courseId;
+    final isProf = widget.isProf;
     final materialsAsync = ref.watch(courseMaterialsProvider(courseId));
 
     return SingleChildScrollView(
@@ -1711,7 +1704,7 @@ class _MaterialsTab extends ConsumerWidget {
                     final file = result?.files.single;
                     if (file == null || file.bytes == null) return;
                     try {
-                      final response = await CourseRepository().ingestCourseMaterial(
+                      await CourseRepository().ingestCourseMaterial(
                         courseId,
                         file.bytes!.toList(),
                         file.name,
