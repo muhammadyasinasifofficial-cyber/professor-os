@@ -89,6 +89,8 @@ class ApiConstants {
       '/courses/$courseId/assignments/$aid/submissions/file';
   static String gradeSubmission(int sid) => '/submissions/$sid/grade';
   static String aiGradeSubmission(int sid) => '/submissions/$sid/ai-grade';
+  static String batchAiGrade(int courseId, int aid) =>
+      '/courses/$courseId/assignments/$aid/ai-grade-all';
   static String downloadSubmissionFile(int sid) => '/submissions/$sid/file';
 
   // ── Exams (Anti-Cheat & Timed Assessments) ──────────

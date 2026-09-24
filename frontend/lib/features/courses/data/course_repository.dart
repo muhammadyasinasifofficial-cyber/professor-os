@@ -182,8 +182,17 @@ class CourseRepository {
     return response.data as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> aiGradeSubmission(int sid) async {
-    final response = await _dio.post(ApiConstants.aiGradeSubmission(sid));
+  Future<Map<String, dynamic>> aiGradeSubmission(int sid,
+      {bool sync = true}) async {
+    final response = await _dio.post(
+      ApiConstants.aiGradeSubmission(sid),
+      queryParameters: {'sync': sync},
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> batchAiGrade(int courseId, int aid) async {
+    final response = await _dio.post(ApiConstants.batchAiGrade(courseId, aid));
     return response.data as Map<String, dynamic>;
   }
 
@@ -209,10 +218,15 @@ class CourseRepository {
   }
 
   Future<Map<String, dynamic>> chatWithCourse(
-      int courseId, String message) async {
-    final response = await _dio.post(ApiConstants.courseChat(courseId), data: {
-      'message': message,
-    });
+      int courseId, String message, {String? sessionId}) async {
+    final data = <String, dynamic>{'message': message};
+    if (sessionId != null && sessionId.isNotEmpty) {
+      data['session_id'] = sessionId;
+    }
+    final response = await _dio.post(
+      ApiConstants.courseChat(courseId),
+      data: data,
+    );
     return response.data as Map<String, dynamic>;
   }
 

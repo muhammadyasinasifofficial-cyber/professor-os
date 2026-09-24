@@ -240,30 +240,38 @@ async def trigger_ai_grading(
     await db.commit()
 
     if sync:
-        evaluation = _grade_submission_core(
-            assignment_title=assignment.title,
-            assignment_prompt=assignment.description or assignment.title,
-            max_marks=float(assignment.max_marks or 100.0),
-            rubric_criteria=criteria_data,
-            student_submission_content=content,
-            submission_type=submission.submission_type or "text",
-        )
-        submission.score = evaluation.total_score
-        submission.feedback = evaluation.student_feedback
-        submission.status = "graded"
-        await db.commit()
-        return {
-            "status": submission.status,
-            "mode": "synchronous",
-            "submission_id": sid,
-            "score": evaluation.total_score,
-            "max_marks": evaluation.max_marks,
-            "percentage": evaluation.percentage,
-            "diagnostic_reasoning": evaluation.diagnostic_reasoning,
-            "criteria": [c.model_dump() for c in evaluation.criteria_evaluations],
-            "needs_review": evaluation.needs_review,
-            "message": "AI grading completed successfully with DeepSeek-R1-Distill-70B.",
-        }
+        try:
+            evaluation = _grade_submission_core(
+                assignment_title=assignment.title,
+                assignment_prompt=assignment.description or assignment.title,
+                max_marks=float(assignment.max_marks or 100.0),
+                rubric_criteria=criteria_data,
+                student_submission_content=content,
+                submission_type=submission.submission_type or "text",
+            )
+            submission.score = evaluation.total_score
+            submission.feedback = evaluation.student_feedback
+            submission.status = "graded"
+            await db.commit()
+            return {
+                "status": submission.status,
+                "mode": "synchronous",
+                "submission_id": sid,
+                "score": evaluation.total_score,
+                "max_marks": evaluation.max_marks,
+                "percentage": evaluation.percentage,
+                "feedback": evaluation.student_feedback,
+                "diagnostic_reasoning": evaluation.diagnostic_reasoning,
+                "criteria": [c.model_dump() for c in evaluation.criteria_evaluations],
+                "needs_review": evaluation.needs_review,
+                "message": "AI grading completed successfully with DeepSeek-R1-Distill-70B.",
+            }
+        except Exception as e:
+            logger.error("AI grading failed for submission %d: %s", sid, e, exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"AI grading failed: {str(e)}",
+            )
 
     # Dispatch asynchronous background task to Celery
     task = grade_submission_task.delay(
@@ -284,6 +292,96 @@ async def trigger_ai_grading(
         "queue": "grading_normal",
         "evaluator_model": "deepseek-r1-distill-llama-70b",
         "message": "AI grading task successfully dispatched to Celery grading queue.",
+    }
+
+
+# ── Prof/TA: Batch AI grade all pending submissions ──
+
+@router.post("/courses/{course_id}/assignments/{aid}/ai-grade-all")
+async def batch_ai_grade_submissions(
+    course_id: int,
+    aid: int,
+    user: Annotated[User, Depends(require_roles("professor", "admin", "ta"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Batch-evaluates all pending submissions for an assignment against the rubric."""
+    try:
+        assignment = await AssignmentService(db).verify_assignment_access(aid, user)
+    except PermissionError as auth_err:
+        raise HTTPException(status_code=403, detail=str(auth_err))
+
+    # Fetch rubric criteria
+    rubric_res = await db.execute(
+        select(Rubric).where(Rubric.assignment_id == aid).options(selectinload(Rubric.criteria))
+    )
+    rubric = rubric_res.scalar_one_or_none()
+
+    criteria_data = []
+    max_m = float(assignment.max_marks or 100.0)
+    if rubric and rubric.criteria:
+        for c in rubric.criteria:
+            criteria_data.append({
+                "name": c.name,
+                "weight": c.weight,
+                "max_score": (c.weight / 100.0) * max_m,
+            })
+    else:
+        criteria_data = [
+            {"name": "Technical Accuracy & Methodology", "weight": 50.0, "max_score": max_m * 0.5},
+            {"name": "Completeness & Problem Resolution", "weight": 30.0, "max_score": max_m * 0.3},
+            {"name": "Clarity & Academic Quality", "weight": 20.0, "max_score": max_m * 0.2},
+        ]
+
+    # Find all pending submissions
+    subs_res = await db.execute(
+        select(Submission).where(
+            Submission.assignment_id == aid,
+            Submission.status == "pending",
+        )
+    )
+    pending_subs = subs_res.scalars().all()
+    if not pending_subs:
+        return {"graded_count": 0, "message": "No pending submissions to grade."}
+
+    graded_count = 0
+    errors = []
+    for sub in pending_subs:
+        # Extract submission text content
+        content = sub.content or ""
+        if not content and sub.file_path:
+            file_p = Path(sub.file_path)
+            if file_p.exists() and file_p.suffix.lower() in [".txt", ".py", ".md", ".java", ".c", ".cpp"]:
+                try:
+                    content = file_p.read_text(encoding="utf-8", errors="replace")
+                except Exception:
+                    pass
+        if not content:
+            content = "Submission file received. (Binary or non-text document uploaded by student)."
+
+        try:
+            eval_res = _grade_submission_core(
+                assignment_title=assignment.title,
+                assignment_prompt=assignment.description or assignment.title,
+                max_marks=max_m,
+                rubric_criteria=criteria_data,
+                student_submission_content=content,
+                submission_type=sub.submission_type or "text",
+            )
+            sub.score = eval_res.total_score
+            sub.feedback = eval_res.student_feedback
+            sub.status = "graded"
+            graded_count += 1
+        except Exception as e:
+            logger.error("Batch grading failed for submission %d: %s", sub.id, e)
+            errors.append(f"Sub #{sub.id}: {str(e)}")
+
+    await db.commit()
+    return {
+        "status": "completed",
+        "graded_count": graded_count,
+        "total_pending": len(pending_subs),
+        "errors": errors,
+        "message": f"Successfully auto-graded {graded_count} of {len(pending_subs)} submissions.",
     }
 
 

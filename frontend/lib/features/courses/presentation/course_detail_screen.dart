@@ -104,79 +104,15 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen>
     }
   }
 
-  Future<void> _showCourseChat() async {
-    final controller = TextEditingController();
-    var loading = false;
-    var answer = '';
+  Future<void> _showCourseChat([String? courseTitle]) async {
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Ask Course AI'),
-          content: SizedBox(
-            width: 520,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextField(
-                  controller: controller,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Question',
-                    hintText: 'Ask about the uploaded course material...',
-                  ),
-                ),
-                if (answer.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    color: AppColors.bgPage,
-                    child: Text(answer),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: loading ? null : () => Navigator.pop(dialogContext),
-              child: const Text('Close'),
-            ),
-            FilledButton(
-              onPressed: loading
-                  ? null
-                  : () async {
-                      final message = controller.text.trim();
-                      if (message.isEmpty) return;
-                      setState(() => loading = true);
-                      try {
-                        final response = await CourseRepository()
-                            .chatWithCourse(widget.courseId, message);
-                        setState(() {
-                          answer = response['response']?.toString() ??
-                              'No answer returned.';
-                          loading = false;
-                        });
-                      } catch (e) {
-                        setState(() {
-                          answer = ErrorParser.parse(e);
-                          loading = false;
-                        });
-                      }
-                    },
-              child: loading
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Ask'),
-            ),
-          ],
-        ),
+      barrierDismissible: true,
+      builder: (dialogContext) => CourseAiChatDialog(
+        courseId: widget.courseId,
+        courseTitle: courseTitle ?? 'Course',
       ),
     );
-    controller.dispose();
   }
 
   @override
@@ -212,10 +148,22 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen>
           error: (_, __) => const Text('Course Details'),
         ),
         actions: [
-          IconButton(
-            tooltip: 'Ask Course AI',
-            icon: const Icon(Icons.chat_bubble_outline_rounded),
-            onPressed: _showCourseChat,
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilledButton.icon(
+              icon: const Icon(Icons.psychology, size: 16),
+              label: isNarrow
+                  ? const SizedBox.shrink()
+                  : const Text('Ask Course AI'),
+              onPressed: () => _showCourseChat(
+                  courseAsync.valueOrNull?['title'] as String?),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.signal,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 8),
+              ),
+            ),
           ),
           if (isProf) ...[
             IconButton(
@@ -316,7 +264,17 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen>
                   style: GoogleFonts.inter(
                       fontWeight: FontWeight.w600, color: Colors.white)),
             )
-          : null,
+          : FloatingActionButton.extended(
+              onPressed: () =>
+                  _showCourseChat(courseAsync.valueOrNull?['title'] as String?),
+              backgroundColor: AppColors.signal,
+              elevation: 2,
+              icon:
+                  const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+              label: const Text('Ask Course AI',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700, color: Colors.white)),
+            ),
     );
   }
 }
@@ -1158,6 +1116,546 @@ class _SettingsTab extends ConsumerWidget {
               ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── M-09 Native Course AI Assistant (Multi-Turn RAG Chat) ───
+
+class CourseChatMessage {
+  final bool isUser;
+  final String text;
+  final DateTime timestamp;
+  final List<Map<String, dynamic>> sources;
+
+  CourseChatMessage({
+    required this.isUser,
+    required this.text,
+    required this.timestamp,
+    this.sources = const [],
+  });
+}
+
+class CourseAiChatDialog extends StatefulWidget {
+  final int courseId;
+  final String courseTitle;
+
+  const CourseAiChatDialog({
+    super.key,
+    required this.courseId,
+    required this.courseTitle,
+  });
+
+  @override
+  State<CourseAiChatDialog> createState() => _CourseAiChatDialogState();
+}
+
+class _CourseAiChatDialogState extends State<CourseAiChatDialog> {
+  final List<CourseChatMessage> _messages = [];
+  final _inputCtrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
+  bool _loading = false;
+  late final String _sessionId;
+  final Set<int> _expandedSourceIndexes = {};
+
+  final List<String> _quickPrompts = [
+    'Summarize key concepts from course lecture materials',
+    'What are the core formulas and definitions?',
+    'Give me 3 practice quiz questions with solutions',
+    'Explain the most challenging topics in simple terms',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _sessionId =
+        'session_${widget.courseId}_${DateTime.now().millisecondsSinceEpoch}';
+    _messages.add(
+      CourseChatMessage(
+        isUser: false,
+        text:
+            'Hello! I am your AI Teaching Assistant for **${widget.courseTitle}**.\n\nI have indexed your course lecture slides, notes, and curriculum. Ask me any question, ask for concept explanations, or pick a suggested topic below!',
+        timestamp: DateTime.now(),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _inputCtrl.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollCtrl.hasClients) {
+        _scrollCtrl.animateTo(
+          _scrollCtrl.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Future<void> _sendMessage([String? presetText]) async {
+    final text = (presetText ?? _inputCtrl.text).trim();
+    if (text.isEmpty || _loading) return;
+
+    if (presetText == null) {
+      _inputCtrl.clear();
+    }
+
+    setState(() {
+      _messages.add(CourseChatMessage(
+        isUser: true,
+        text: text,
+        timestamp: DateTime.now(),
+      ));
+      _loading = true;
+    });
+    _scrollToBottom();
+
+    try {
+      final res = await CourseRepository().chatWithCourse(
+        widget.courseId,
+        text,
+        sessionId: _sessionId,
+      );
+
+      final reply = res['response']?.toString() ?? 'No response returned.';
+      final rawSources = res['sources'] as List<dynamic>? ?? [];
+      final sources = rawSources.whereType<Map<String, dynamic>>().toList();
+
+      if (mounted) {
+        setState(() {
+          _messages.add(CourseChatMessage(
+            isUser: false,
+            text: reply,
+            timestamp: DateTime.now(),
+            sources: sources,
+          ));
+          _loading = false;
+        });
+        _scrollToBottom();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _messages.add(CourseChatMessage(
+            isUser: false,
+            text:
+                'I encountered an issue processing your query: ${ErrorParser.parse(e)}',
+            timestamp: DateTime.now(),
+          ));
+          _loading = false;
+        });
+        _scrollToBottom();
+      }
+    }
+  }
+
+  void _clearChat() {
+    setState(() {
+      _messages.clear();
+      _messages.add(
+        CourseChatMessage(
+          isUser: false,
+          text:
+              'Chat cleared! How can I help you with **${widget.courseTitle}**?',
+          timestamp: DateTime.now(),
+        ),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final isMobile = size.width < 640;
+
+    return Dialog(
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 12 : 32,
+        vertical: isMobile ? 24 : 32,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: isMobile ? double.infinity : 760,
+        height: isMobile ? size.height * 0.85 : 700,
+        decoration: BoxDecoration(
+          color: AppColors.bgSurface,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            // Dialog Header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: const BoxDecoration(
+                color: AppColors.bgPage,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                border: Border(bottom: BorderSide(color: AppColors.border)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.signal.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.psychology,
+                        color: AppColors.signal, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('AI Teaching Assistant',
+                            style: GoogleFonts.outfit(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.inkPrimary)),
+                        Text(widget.courseTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                                fontSize: 12, color: AppColors.textMuted)),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Clear Conversation',
+                    icon: const Icon(Icons.refresh_rounded, size: 20),
+                    onPressed: _clearChat,
+                  ),
+                  IconButton(
+                    tooltip: 'Close',
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+
+            // Quick Prompt Chips
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: const BoxDecoration(
+                color: AppColors.bgSurface,
+                border: Border(bottom: BorderSide(color: AppColors.border)),
+              ),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: _quickPrompts.map((prompt) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ActionChip(
+                        label: Text(prompt,
+                            style: GoogleFonts.inter(
+                                fontSize: 12, fontWeight: FontWeight.w500)),
+                        backgroundColor: AppColors.bgPage,
+                        side: const BorderSide(color: AppColors.border),
+                        onPressed: _loading ? null : () => _sendMessage(prompt),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+
+            // Messages List
+            Expanded(
+              child: ListView.builder(
+                controller: _scrollCtrl,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                itemCount: _messages.length,
+                itemBuilder: (context, i) {
+                  final msg = _messages[i];
+                  return _buildMessageItem(msg, i);
+                },
+              ),
+            ),
+
+            // Thinking Indicator
+            if (_loading)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppColors.signal),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'AI is retrieving course materials & synthesizing answer...',
+                      style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                          fontStyle: FontStyle.italic),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Input Bar
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                color: AppColors.bgPage,
+                borderRadius:
+                    BorderRadius.vertical(bottom: Radius.circular(16)),
+                border: Border(top: BorderSide(color: AppColors.border)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _inputCtrl,
+                      minLines: 1,
+                      maxLines: 4,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _sendMessage(),
+                      decoration: InputDecoration(
+                        hintText:
+                            'Ask any question about lectures, assignments, or concepts...',
+                        hintStyle: GoogleFonts.inter(
+                            fontSize: 13, color: AppColors.textMuted),
+                        filled: true,
+                        fillColor: AppColors.bgSurface,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: AppColors.signal),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  FilledButton(
+                    onPressed: _loading ? null : () => _sendMessage(),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.signal,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                    ),
+                    child: const Icon(Icons.send_rounded, size: 18),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessageItem(CourseChatMessage msg, int msgIndex) {
+    if (msg.isUser) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 14, left: 60),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.signal,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(14),
+              topRight: Radius.circular(14),
+              bottomLeft: Radius.circular(14),
+              bottomRight: Radius.circular(4),
+            ),
+          ),
+          child: SelectableText(
+            msg.text,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              color: Colors.white,
+              height: 1.45,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Assistant response
+    final isExpanded = _expandedSourceIndexes.contains(msgIndex);
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16, right: 40),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.bgSurface,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(14),
+            topRight: Radius.circular(14),
+            bottomLeft: Radius.circular(4),
+            bottomRight: Radius.circular(14),
+          ),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.psychology, size: 16, color: AppColors.signal),
+                const SizedBox(width: 6),
+                Text('AI Assistant',
+                    style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.signal)),
+                const Spacer(),
+                Text(
+                  '${msg.timestamp.hour.toString().padLeft(2, '0')}:${msg.timestamp.minute.toString().padLeft(2, '0')}',
+                  style: GoogleFonts.jetBrainsMono(
+                      fontSize: 10, color: AppColors.textMuted),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            SelectableText(
+              msg.text,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: AppColors.inkPrimary,
+                height: 1.5,
+              ),
+            ),
+            // RAG Sources Citations
+            if (msg.sources.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 8),
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    if (isExpanded) {
+                      _expandedSourceIndexes.remove(msgIndex);
+                    } else {
+                      _expandedSourceIndexes.add(msgIndex);
+                    }
+                  });
+                },
+                child: Row(
+                  children: [
+                    const Icon(Icons.menu_book_rounded,
+                        size: 14, color: AppColors.signal),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${msg.sources.length} Verified Course Material Reference${msg.sources.length > 1 ? 's' : ''}',
+                      style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.signal),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      isExpanded
+                          ? Icons.expand_less_rounded
+                          : Icons.expand_more_rounded,
+                      size: 16,
+                      color: AppColors.signal,
+                    ),
+                  ],
+                ),
+              ),
+              if (isExpanded) ...[
+                const SizedBox(height: 8),
+                ...msg.sources.map((src) {
+                  final filename = src['source']?.toString() ?? 'Document';
+                  final chunkId = src['chunk_id'];
+                  final score = src['score'];
+                  final snippet = src['text']?.toString() ?? '';
+
+                  return Container(
+                    margin: const EdgeInsets.only(top: 6),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.bgPage,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.insert_drive_file_outlined,
+                                size: 14, color: AppColors.textMuted),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                '$filename ${chunkId != null ? '(Chunk #$chunkId)' : ''}',
+                                style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.inkPrimary),
+                              ),
+                            ),
+                            if (score != null)
+                              ProfBadge(
+                                label:
+                                    '${((score as num) * 100).toStringAsFixed(0)}% match',
+                                color: AppColors.primaryIndigo,
+                              ),
+                          ],
+                        ),
+                        if (snippet.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            snippet,
+                            maxLines: 4,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                                fontStyle: FontStyle.italic),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ],
+          ],
         ),
       ),
     );
