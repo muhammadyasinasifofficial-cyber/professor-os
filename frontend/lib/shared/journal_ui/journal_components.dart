@@ -30,16 +30,24 @@ class _PrimaryButtonState extends State<PrimaryButton> {
   @override
   Widget build(BuildContext context) {
     final bool disabled = widget.onPressed == null || widget.isLoading;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Hover inverts: fill ↔ outline (Print design pattern)
-    final Color bgColor = _isHovered && !disabled
-        ? Colors.transparent
-        : AppColors.inkPrimary;
-    final Color textColor = _isHovered && !disabled
-        ? AppColors.inkPrimary
-        : AppColors.canvas;
+    // Fill stability on hover (no outline inversion; avoids false deactivation impression)
+    Color bgColor;
+    Color textColor;
+    if (disabled) {
+      bgColor = AppColors.surfaceMid;
+      textColor = AppColors.inkGhost;
+    } else if (isDark) {
+      bgColor = _isHovered ? Colors.white : AppColors.inkPrimary;
+      textColor = AppColors.canvas;
+    } else {
+      bgColor = _isHovered ? const Color(0xFF2E2E2A) : AppColorsLight.inkPrimary;
+      textColor = _isHovered ? Colors.white : AppColorsLight.canvas;
+    }
+
     final Border border = Border.all(
-      color: _isHovered && !disabled ? AppColors.inkPrimary : Colors.transparent,
+      color: _isHovered && !disabled ? AppColors.ruleStrong : AppColors.rule,
       width: 1,
     );
 
@@ -63,31 +71,34 @@ class _PrimaryButtonState extends State<PrimaryButton> {
         },
         onTap: disabled ? null : widget.onPressed,
         child: AnimatedScale(
-          scale: _isPressed ? 0.97 : 1.0,
+          scale: _isPressed ? 0.98 : 1.0,
           duration: const Duration(milliseconds: 80),
           curve: Curves.easeOut,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            curve: Curves.easeOut,
-            height: 38,
-            width: widget.width,
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            decoration: BoxDecoration(
-              color: bgColor,
-              border: border,
-              borderRadius: BorderRadius.circular(AppRadius.r4),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              widget.isLoading
-                  ? (widget.loadingLabel ?? '${widget.label}…')
-                  : widget.label,
-              style: GoogleFonts.dmSans(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: widget.isLoading ? AppColors.inkGhost : textColor,
+          child: Transform.translate(
+            offset: Offset(0, (_isHovered && !disabled) ? -1.0 : 0.0),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              curve: Curves.easeOut,
+              constraints: const BoxConstraints(minHeight: 44),
+              width: widget.width,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color: bgColor,
+                border: border,
+                borderRadius: BorderRadius.circular(AppRadius.r4),
               ),
-              overflow: TextOverflow.ellipsis,
+              alignment: Alignment.center,
+              child: Text(
+                widget.isLoading
+                    ? (widget.loadingLabel ?? '${widget.label}…')
+                    : widget.label,
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: widget.isLoading ? AppColors.inkGhost : textColor,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ),
         ),
@@ -144,9 +155,9 @@ class _SecondaryButtonState extends State<SecondaryButton> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           curve: Curves.easeOut,
-          height: 38,
+          constraints: const BoxConstraints(minHeight: 40),
           width: widget.width,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
           decoration: BoxDecoration(
             color: Colors.transparent,
             border: Border.all(color: borderColor, width: 1),
@@ -216,6 +227,7 @@ class _GhostButtonState extends State<GhostButton> {
 }
 
 // ── 4. STAMP BADGE (Status Rubber Stamp) ──────────────────────────────
+// ── 4. STAMP BADGE (Status Rubber Stamp with Dual-Coding & Laser Contrast) ──
 enum StampType { pass, pending, critical, neutral }
 
 class StampBadge extends StatelessWidget {
@@ -232,46 +244,69 @@ class StampBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     Color bg;
     Color ink;
+    String symbol;
 
     switch (type) {
       case StampType.pass:
         bg = AppColors.statusPassBg;
         ink = AppColors.statusPassInk;
+        symbol = '✓';
         break;
       case StampType.pending:
         bg = AppColors.statusPendingBg;
         ink = AppColors.statusPendingInk;
+        symbol = '◷';
         break;
       case StampType.critical:
         bg = AppColors.statusCriticalBg;
         ink = AppColors.statusCriticalInk;
+        symbol = '!';
         break;
       case StampType.neutral:
         bg = AppColors.surfaceMid;
         ink = AppColors.inkSecondary;
+        symbol = '•';
         break;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(AppRadius.r2),
+        border: Border.all(color: ink.withOpacity(0.35), width: 1),
       ),
-      child: Text(
-        label,
-        style: GoogleFonts.dmSans(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: ink,
-          height: 1.1,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            symbol,
+            style: GoogleFonts.dmSans(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: ink,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.dmSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: ink,
+                height: 1.1,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// ── 5. SCORE INPUT (Underline-only, JetBrains Mono, AI pre-fill) ───────
+// ── 5. SCORE INPUT (Bounded Container, JetBrains Mono, Explicit AI Pill) ──
 class JournalScoreInput extends StatefulWidget {
   final double? initialScore;
   final double maxMarks;
@@ -294,66 +329,215 @@ class JournalScoreInput extends StatefulWidget {
 
 class _JournalScoreInputState extends State<JournalScoreInput> {
   late TextEditingController _ctrl;
-  late bool _suggested;
+  bool _isAccepted = false;
+  String _previousManualText = '';
+  bool _isFocused = false;
+  late FocusNode _focusNode;
 
   @override
   void initState() {
     super.initState();
-    _suggested = widget.isAiSuggested;
+    _isAccepted = false;
+    _focusNode = widget.focusNode ?? FocusNode();
+    _focusNode.addListener(_onFocusChange);
     _ctrl = TextEditingController(
-      text: widget.initialScore != null ? widget.initialScore!.toStringAsFixed(1).replaceAll('.0', '') : '',
+      text: widget.initialScore != null && !widget.isAiSuggested
+          ? widget.initialScore!.toStringAsFixed(1).replaceAll('.0', '')
+          : '',
     );
+  }
+
+  void _onFocusChange() {
+    setState(() => _isFocused = _focusNode.hasFocus);
   }
 
   @override
   void didUpdateWidget(JournalScoreInput oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.initialScore != oldWidget.initialScore) {
-      _ctrl.text = widget.initialScore != null ? widget.initialScore!.toStringAsFixed(1).replaceAll('.0', '') : '';
-      _suggested = widget.isAiSuggested;
+    if (widget.initialScore != oldWidget.initialScore || widget.isAiSuggested != oldWidget.isAiSuggested) {
+      if (!widget.isAiSuggested && widget.initialScore != null) {
+        _ctrl.text = widget.initialScore!.toStringAsFixed(1).replaceAll('.0', '');
+        _isAccepted = false;
+      }
     }
   }
 
   @override
   void dispose() {
+    if (widget.focusNode == null) {
+      _focusNode.dispose();
+    } else {
+      _focusNode.removeListener(_onFocusChange);
+    }
     _ctrl.dispose();
     super.dispose();
   }
 
+  void _acceptSuggestion() {
+    if (widget.initialScore != null) {
+      setState(() {
+        _isAccepted = true;
+        _previousManualText = _ctrl.text;
+        _ctrl.text = widget.initialScore!.toStringAsFixed(1).replaceAll('.0', '');
+      });
+      widget.onChanged(widget.initialScore);
+    }
+  }
+
+  void _undoSuggestion() {
+    setState(() {
+      _isAccepted = false;
+      _ctrl.text = _previousManualText;
+    });
+    final parsed = double.tryParse(_previousManualText.trim());
+    widget.onChanged(parsed);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 72,
-      child: TextField(
-        controller: _ctrl,
-        focusNode: widget.focusNode,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        textAlign: TextAlign.right,
-        style: GoogleFonts.jetBrainsMono(
-          fontSize: 15,
-          fontWeight: FontWeight.w500,
-          color: _suggested ? AppColors.inkGhost : AppColors.inkPrimary,
-        ),
-        decoration: InputDecoration(
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 4),
-          border: InputBorder.none,
-          enabledBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(color: AppColors.rule, width: 1),
+    final hasAi = widget.isAiSuggested && widget.initialScore != null;
+    final suggestedValStr = widget.initialScore != null
+        ? widget.initialScore!.toStringAsFixed(1).replaceAll('.0', '')
+        : '';
+
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Explicit AI Suggestion Pill / Undo Chip
+          if (hasAi) ...[
+            if (!_isAccepted)
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: _acceptSuggestion,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    margin: const EdgeInsets.only(bottom: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.statusPassBg,
+                      borderRadius: BorderRadius.circular(AppRadius.r2),
+                      border: Border.all(color: AppColors.statusPassInk.withOpacity(0.4), width: 1),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'AI Suggestion: [ $suggestedValStr ]',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.statusPassInk,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '• Tap to apply',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w400,
+                            color: AppColors.statusPassInk.withOpacity(0.8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+            else
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: _undoSuggestion,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    margin: const EdgeInsets.only(bottom: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceMid,
+                      borderRadius: BorderRadius.circular(AppRadius.r2),
+                      border: Border.all(color: AppColors.ruleStrong, width: 1),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('✨', style: TextStyle(fontSize: 10)),
+                        const SizedBox(width: 4),
+                        Text(
+                          'AI $suggestedValStr • Undo',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.inkSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+
+          // Bounded 4-sided Surface Container Input
+          Container(
+            width: 104,
+            constraints: const BoxConstraints(minHeight: 42),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceMid,
+              borderRadius: BorderRadius.circular(AppRadius.r4),
+              border: Border.all(
+                color: _isFocused ? AppColors.inkAccent : AppColors.ruleStrong,
+                width: _isFocused ? 1.5 : 1.0,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _ctrl,
+                    focusNode: _focusNode,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    textAlign: TextAlign.right,
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.inkPrimary,
+                    ),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      hintText: '—',
+                      hintStyle: GoogleFonts.jetBrainsMono(color: AppColors.inkGhost),
+                    ),
+                    onChanged: (val) {
+                      if (_isAccepted) {
+                        setState(() => _isAccepted = false);
+                      }
+                      final parsed = double.tryParse(val.trim());
+                      widget.onChanged(parsed);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '/${widget.maxMarks.toStringAsFixed(0)}',
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.inkSecondary,
+                  ),
+                ),
+              ],
+            ),
           ),
-          focusedBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(color: AppColors.inkAccent, width: 1.5),
-          ),
-          hintText: '—',
-          hintStyle: GoogleFonts.jetBrainsMono(color: AppColors.inkGhost),
-        ),
-        onChanged: (val) {
-          if (_suggested) {
-            setState(() => _suggested = false);
-          }
-          final parsed = double.tryParse(val.trim());
-          widget.onChanged(parsed);
-        },
+        ],
       ),
     );
   }

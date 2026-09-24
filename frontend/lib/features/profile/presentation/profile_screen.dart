@@ -431,19 +431,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           runSpacing: 8,
                           children: [
                             _buildSelectionChip(
-                              label: 'The Journal v2 (2026/2027 Editorial)',
+                              label: 'The Journal (v2)',
                               isSelected: ref.watch(themeStateProvider).designSystem == DesignSystem.journal,
                               onTap: () {
                                 ref.read(themeStateProvider.notifier).setDesignSystem(DesignSystem.journal);
-                                JournalToastManager.show(context, 'Switched to The Journal v2 Design');
+                                JournalToastManager.show(context, 'Switched to The Journal v2');
                               },
                             ),
                             _buildSelectionChip(
-                              label: 'Marginalia v1 (Classic Paper)',
+                              label: 'Marginalia (v1)',
                               isSelected: ref.watch(themeStateProvider).designSystem == DesignSystem.marginalia,
                               onTap: () {
                                 ref.read(themeStateProvider.notifier).setDesignSystem(DesignSystem.marginalia);
-                                JournalToastManager.show(context, 'Switched to Marginalia v1 Design');
+                                JournalToastManager.show(context, 'Switched to Marginalia v1');
                               },
                             ),
                           ],
@@ -468,7 +468,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           runSpacing: 8,
                           children: [
                             _buildSelectionChip(
-                              label: 'Pressroom Night (Dark - Default)',
+                              label: 'Pressroom Night',
                               isSelected: ref.watch(themeStateProvider).themeMode == JournalThemeMode.dark,
                               onTap: () {
                                 ref.read(themeStateProvider.notifier).setThemeMode(JournalThemeMode.dark);
@@ -476,7 +476,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               },
                             ),
                             _buildSelectionChip(
-                              label: 'Pressroom Day (Light)',
+                              label: 'Pressroom Day',
                               isSelected: ref.watch(themeStateProvider).themeMode == JournalThemeMode.light,
                               onTap: () {
                                 ref.read(themeStateProvider.notifier).setThemeMode(JournalThemeMode.light);
@@ -496,7 +496,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.logout_rounded,
                         color: AppColors.feedbackRed),
-                    label: Text('Sign out from all active sessions',
+                    label: Text('Sign out from all sessions',
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
                             color: AppColors.feedbackRed,
                             fontWeight: FontWeight.w600)),
@@ -582,8 +583,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return isMobile
         ? Column(
             children: children
+                .whereType<Expanded>()
                 .map((c) => Padding(
-                    padding: const EdgeInsets.only(bottom: 14), child: c))
+                    padding: const EdgeInsets.only(bottom: 14), child: c.child))
                 .toList())
         : Row(children: children);
   }
@@ -612,7 +614,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             children: [...row1, ...row2]
                 .whereType<Expanded>()
                 .map((c) => Padding(
-                    padding: const EdgeInsets.only(bottom: 14), child: c))
+                    padding: const EdgeInsets.only(bottom: 14), child: c.child))
                 .toList())
         : Column(children: [
             Row(children: row1),
@@ -639,8 +641,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return isMobile
         ? Column(
             children: children
+                .whereType<Expanded>()
                 .map((c) => Padding(
-                    padding: const EdgeInsets.only(bottom: 14), child: c))
+                    padding: const EdgeInsets.only(bottom: 14), child: c.child))
                 .toList())
         : Row(children: children);
   }
@@ -663,8 +666,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return isMobile
         ? Column(
             children: children
+                .whereType<Expanded>()
                 .map((c) => Padding(
-                    padding: const EdgeInsets.only(bottom: 14), child: c))
+                    padding: const EdgeInsets.only(bottom: 14), child: c.child))
                 .toList())
         : Row(children: children);
   }
@@ -689,29 +693,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               width: isSelected ? 1.5 : 1.0,
             ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isSelected) ...[
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: AppColors.statusPassInk,
-                    shape: BoxShape.circle,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 180),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isSelected) ...[
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: AppColors.statusPassInk,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Flexible(
+                  child: Text(
+                    label,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                      color: isSelected ? AppColors.inkPrimary : AppColors.inkSecondary,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
               ],
-              Text(
-                label,
-                style: GoogleFonts.dmSans(
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color: isSelected ? AppColors.inkPrimary : AppColors.inkSecondary,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

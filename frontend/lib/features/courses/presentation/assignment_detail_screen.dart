@@ -1566,6 +1566,9 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
   final _scoreCtrl = TextEditingController();
   final _feedbackCtrl = TextEditingController();
   final Map<String, String> _selectedLevels = {}; // criteria_name -> level
+  double? _aiSuggestedScore;
+  bool _isAiAccepted = false;
+  String _manualScoreBeforeAi = '';
 
   @override
   void initState() {
@@ -1579,6 +1582,8 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
     _scoreCtrl.text = sub['score']?.toString() ?? '';
     _feedbackCtrl.text = sub['feedback'] ?? '';
     _selectedLevels.clear();
+    _aiSuggestedScore = null;
+    _isAiAccepted = false;
   }
 
   void _onSaveCurrent() {
@@ -1593,7 +1598,7 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
     widget.onSave(_currentIndex, updated);
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
       content: Text('Grade and feedback saved successfully!'),
-      backgroundColor: AppColors.successGreen,
+      backgroundColor: AppColors.statusPassInk,
     ));
   }
 
@@ -1609,7 +1614,8 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
       final feedback = res['feedback']?.toString() ??
           res['diagnostic_reasoning']?.toString();
       setState(() {
-        if (score != null) _scoreCtrl.text = score.toStringAsFixed(1);
+        _aiSuggestedScore = score;
+        _isAiAccepted = false;
         if (feedback != null && feedback.isNotEmpty) {
           _feedbackCtrl.text = feedback;
         }
@@ -1618,8 +1624,8 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(
-              '✓ AI evaluated: ${score?.toStringAsFixed(1) ?? ''} pts awarded.'),
-          backgroundColor: AppColors.successGreen,
+              '✓ AI evaluated: ${score?.toStringAsFixed(1) ?? ''} pts proposed. Review suggestion below.'),
+          backgroundColor: AppColors.statusPassInk,
         ));
       }
     } catch (e) {
@@ -1627,7 +1633,7 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
         setState(() => _aiGrading = false);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('AI grading failed: ${ErrorParser.parse(e)}'),
-          backgroundColor: AppColors.dangerRose,
+          backgroundColor: AppColors.statusCriticalInk,
         ));
       }
     }
@@ -1725,14 +1731,24 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
                 Expanded(
                   child: Column(
                     children: [
-                      Text(sub['student_name'],
-                          style: GoogleFonts.outfit(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary)),
-                      Text(sub['student_email'],
-                          style: GoogleFonts.inter(
-                              fontSize: 12, color: AppColors.textMuted)),
+                      Text(
+                        '${sub['roll_number'] ?? 'Student #${sub['student_id'] ?? (_currentIndex + 1)}'} • ${sub['student_name']}',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.inkPrimary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        sub['student_email'] ?? '',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: AppColors.inkSecondary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ],
                   ),
                 ),
@@ -1917,56 +1933,187 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
                         error: (_, __) => const SizedBox.shrink(),
                       ),
 
-                      TextField(
-                        controller: _scoreCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        decoration: const InputDecoration(
-                          labelText: 'Points / Score',
-                          hintText: 'e.g. 85.5',
+                      // AI Draft Suggestion Pill or Undo Chip
+                      if (_aiSuggestedScore != null) ...[
+                        if (!_isAiAccepted)
+                          MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _isAiAccepted = true;
+                                  _manualScoreBeforeAi = _scoreCtrl.text;
+                                  _scoreCtrl.text = _aiSuggestedScore!.toStringAsFixed(1);
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                margin: const EdgeInsets.only(bottom: 8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.statusPassBg,
+                                  borderRadius: BorderRadius.circular(AppRadius.r2),
+                                  border: Border.all(color: AppColors.statusPassInk.withOpacity(0.4), width: 1),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'AI Suggestion: [ ${_aiSuggestedScore!.toStringAsFixed(1)} ]',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.statusPassInk,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '• Tap to apply',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 11,
+                                        color: AppColors.statusPassInk.withOpacity(0.85),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _isAiAccepted = false;
+                                  _scoreCtrl.text = _manualScoreBeforeAi;
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                margin: const EdgeInsets.only(bottom: 8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceMid,
+                                  borderRadius: BorderRadius.circular(AppRadius.r2),
+                                  border: Border.all(color: AppColors.ruleStrong, width: 1),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Text('✨', style: TextStyle(fontSize: 11)),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'AI ${_aiSuggestedScore!.toStringAsFixed(1)} • Undo',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.inkSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+
+                      // Bounded 4-sided Surface Score Input Container
+                      Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceMid,
+                            borderRadius: BorderRadius.circular(AppRadius.r4),
+                            border: Border.all(color: AppColors.ruleStrong, width: 1),
+                          ),
+                          child: Row(
+                            children: [
+                              Text(
+                                'SCORE:',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.6,
+                                  color: AppColors.inkSecondary,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextField(
+                                  controller: _scoreCtrl,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  style: GoogleFonts.jetBrainsMono(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.inkPrimary,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: '0.0',
+                                    hintStyle: GoogleFonts.jetBrainsMono(color: AppColors.inkGhost),
+                                    border: InputBorder.none,
+                                    enabledBorder: InputBorder.none,
+                                    focusedBorder: InputBorder.none,
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                '/ 100',
+                                style: GoogleFonts.jetBrainsMono(
+                                  fontSize: 13,
+                                  color: AppColors.inkSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
+
+                      Text(
+                        'QUALITATIVE FEEDBACK:',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.6,
+                          color: AppColors.inkSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       TextField(
                         controller: _feedbackCtrl,
                         maxLines: 4,
-                        decoration: const InputDecoration(
-                          labelText: 'Qualitative Feedback',
-                          hintText: 'Great work! Solid structure...',
+                        style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.inkPrimary),
+                        decoration: InputDecoration(
+                          hintText: 'Enter qualitative rubric feedback and diagnostics...',
+                          hintStyle: GoogleFonts.dmSans(color: AppColors.inkGhost),
+                          filled: true,
+                          fillColor: AppColors.surfaceMid,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.r4),
+                            borderSide: const BorderSide(color: AppColors.rule),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.r4),
+                            borderSide: const BorderSide(color: AppColors.rule),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 20),
-                      FilledButton.icon(
+
+                      SecondaryButton(
+                        label: _aiGrading ? 'AI Evaluating...' : 'Auto-Grade with AI (DeepSeek-R1)',
+                        isLoading: _aiGrading,
+                        width: double.infinity,
                         onPressed: _aiGrading ? null : _runAiGrade,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.signal,
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size(double.infinity, 46),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
-                        ),
-                        icon: _aiGrading
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white))
-                            : const Icon(Icons.auto_awesome, size: 16),
-                        label: Text(_aiGrading
-                            ? 'AI Evaluating with Rubric...'
-                            : 'Auto-Grade with AI (DeepSeek-R1)'),
                       ),
                       const SizedBox(height: 12),
-                      ElevatedButton(
+
+                      PrimaryButton(
+                        label: 'Save Grade & Comments',
+                        width: double.infinity,
                         onPressed: _onSaveCurrent,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.successGreen,
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size(double.infinity, 48),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
-                        ),
-                        child: const Text('Save Grade & Comments'),
                       ),
                     ],
                   ),

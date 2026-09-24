@@ -17,6 +17,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/journal_ui/journal_components.dart';
 
 class QuizAttemptScreen extends ConsumerStatefulWidget {
   final String quizId;
@@ -47,6 +48,8 @@ class _QuizAttemptScreenState extends ConsumerState<QuizAttemptScreen> {
 
   // Answers map: question_id -> selected_option or text_answer
   final Map<String, String> _userAnswers = {};
+  // Flagged questions set for review
+  final Set<String> _flaggedQuestions = {};
 
   // Timer
   Timer? _timer;
@@ -285,27 +288,59 @@ class _QuizAttemptScreenState extends ConsumerState<QuizAttemptScreen> {
         return exit == true;
       },
       child: Scaffold(
+        backgroundColor: AppColors.canvas,
         appBar: AppBar(
-          title: Text(widget.quizTitle, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 18)),
+          backgroundColor: AppColors.canvas,
+          elevation: 0,
+          title: Text(
+            widget.quizTitle,
+            style: GoogleFonts.dmSerifDisplay(
+              fontSize: 18,
+              color: AppColors.inkPrimary,
+            ),
+          ),
+          bottom: const PreferredSize(
+            preferredSize: Size.fromHeight(1),
+            child: Divider(height: 1, color: AppColors.rule),
+          ),
           actions: [
             if (_timeLimitMinutes != null)
               Container(
                 margin: const EdgeInsets.only(right: 16),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _secondsRemaining < 120 ? Colors.red.shade100 : Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: _secondsRemaining < 120 ? Colors.red : Colors.blue),
+                  color: _secondsRemaining < 120
+                      ? AppColors.statusCriticalBg
+                      : AppColors.surfaceMid,
+                  borderRadius: BorderRadius.circular(AppRadius.r2),
+                  border: Border.all(
+                    color: _secondsRemaining < 120
+                        ? AppColors.statusCriticalInk
+                        : AppColors.rule,
+                    width: 1,
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.timer_outlined, size: 16, color: _secondsRemaining < 120 ? Colors.red : Colors.blue),
-                    const SizedBox(width: 4),
+                    Text(
+                      _secondsRemaining < 120 ? '!' : '◷',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: _secondsRemaining < 120
+                            ? AppColors.statusCriticalInk
+                            : AppColors.inkSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
                     Text(
                       _formatTimer(_secondsRemaining),
                       style: GoogleFonts.jetBrainsMono(
-                        fontWeight: FontWeight.bold,
-                        color: _secondsRemaining < 120 ? Colors.red : Colors.blue,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _secondsRemaining < 120
+                            ? AppColors.statusCriticalInk
+                            : AppColors.inkPrimary,
                       ),
                     ),
                   ],
@@ -314,110 +349,221 @@ class _QuizAttemptScreenState extends ConsumerState<QuizAttemptScreen> {
           ],
         ),
         body: _submitting
-            ? const Center(
+            ? Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Auto-scoring your assessment...'),
+                    const CircularProgressIndicator(color: AppColors.inkPrimary),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Auto-scoring your assessment...',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        color: AppColors.inkSecondary,
+                      ),
+                    ),
                   ],
                 ),
               )
             : SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Progress & Bloom Badge Bar
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Question ${_currentIndex + 1} of ${_questions.length}',
-                          style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey.shade700),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.indigo.shade50,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: Colors.indigo.shade200),
-                          ),
-                          child: Text(
-                            'Taxonomy: $bloom',
-                            style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.indigo.shade800),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    LinearProgressIndicator(
-                      value: (_currentIndex + 1) / _questions.length,
-                      backgroundColor: Colors.grey.shade200,
-                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                    ),
-                    const SizedBox(height: 24),
+                    // Top Question Selector / Segmented Navigation
+                    _buildQuestionNavigationHeader(),
+                    const SizedBox(height: 16),
 
-                    // Question Card
-                    Card(
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: Colors.grey.shade200),
-                      ),
-                      color: Colors.white,
-                      child: Padding(
-                        padding: const EdgeInsets.all(18),
-                        child: Text(
-                          qText,
-                          style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, height: 1.4),
-                        ),
+                    // Progress Bar
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(AppRadius.r2),
+                      child: LinearProgressIndicator(
+                        value: (_currentIndex + 1) / _questions.length,
+                        minHeight: 4,
+                        backgroundColor: AppColors.surfaceMid,
+                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.inkAccent),
                       ),
                     ),
                     const SizedBox(height: 20),
 
+                    // Taxonomy & Flag Action Bar
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        StampBadge(
+                          label: 'Bloom: $bloom',
+                          type: StampType.neutral,
+                        ),
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                if (_flaggedQuestions.contains(qId)) {
+                                  _flaggedQuestions.remove(qId);
+                                } else {
+                                  _flaggedQuestions.add(qId);
+                                }
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: _flaggedQuestions.contains(qId)
+                                    ? AppColors.statusPendingBg
+                                    : AppColors.surfaceMid,
+                                borderRadius: BorderRadius.circular(AppRadius.r2),
+                                border: Border.all(
+                                  color: _flaggedQuestions.contains(qId)
+                                      ? AppColors.statusPendingInk
+                                      : AppColors.rule,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _flaggedQuestions.contains(qId) ? '⚑' : '⚐',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: _flaggedQuestions.contains(qId)
+                                          ? AppColors.statusPendingInk
+                                          : AppColors.inkSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _flaggedQuestions.contains(qId)
+                                        ? 'Flagged for Review'
+                                        : 'Flag for Review',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: _flaggedQuestions.contains(qId)
+                                          ? AppColors.statusPendingInk
+                                          : AppColors.inkSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Question Card (The Journal Surface)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(AppRadius.r6),
+                        border: Border.all(color: AppColors.rule, width: 1),
+                      ),
+                      child: Text(
+                        qText,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          height: 1.5,
+                          color: AppColors.inkPrimary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
                     // Options / Input
                     if (qType == 'MCQ') ...[
-                      Text('Select your answer:', style: GoogleFonts.inter(fontWeight: FontWeight.w500, color: Colors.grey.shade700)),
-                      const SizedBox(height: 10),
+                      Text(
+                        'SELECT YOUR ANSWER:',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.8,
+                          color: AppColors.inkSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       ...options.map((opt) {
                         final isSelected = _userAnswers[qId] == opt;
                         return Container(
                           margin: const EdgeInsets.only(bottom: 10),
                           decoration: BoxDecoration(
-                            color: isSelected ? Colors.blue.shade50 : Colors.white,
-                            borderRadius: BorderRadius.circular(10),
+                            color: isSelected ? AppColors.surfaceMid : AppColors.surface,
+                            borderRadius: BorderRadius.circular(AppRadius.r4),
                             border: Border.all(
-                              color: isSelected ? AppColors.primary : Colors.grey.shade300,
+                              color: isSelected ? AppColors.inkAccent : AppColors.rule,
                               width: isSelected ? 1.5 : 1.0,
                             ),
                           ),
-                          child: RadioListTile<String>(
-                            value: opt,
-                            groupValue: _userAnswers[qId],
-                            activeColor: AppColors.primary,
-                            title: Text(opt, style: GoogleFonts.inter(fontSize: 14)),
-                            onChanged: (val) {
-                              if (val != null) {
-                                setState(() {
-                                  _userAnswers[qId] = val;
-                                });
-                              }
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(AppRadius.r4),
+                            onTap: () {
+                              setState(() {
+                                _userAnswers[qId] = opt;
+                              });
                             },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 18,
+                                    height: 18,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isSelected ? AppColors.inkAccent : AppColors.inkSecondary,
+                                        width: isSelected ? 5.0 : 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Text(
+                                      opt,
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 14,
+                                        fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
+                                        color: AppColors.inkPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         );
                       }),
                     ] else ...[
-                      Text('Your Answer:', style: GoogleFonts.inter(fontWeight: FontWeight.w500, color: Colors.grey.shade700)),
-                      const SizedBox(height: 10),
+                      Text(
+                        'YOUR ANSWER:',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.8,
+                          color: AppColors.inkSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       TextField(
-                        maxLines: 4,
+                        maxLines: 5,
+                        controller: TextEditingController(text: _userAnswers[qId] ?? '')
+                          ..selection = TextSelection.fromPosition(
+                            TextPosition(offset: (_userAnswers[qId] ?? '').length),
+                          ),
+                        style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.inkPrimary),
                         decoration: InputDecoration(
                           hintText: 'Enter your response...',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                          fillColor: Colors.white,
                           filled: true,
+                          fillColor: AppColors.surface,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.r4),
+                            borderSide: const BorderSide(color: AppColors.rule),
+                          ),
                         ),
                         onChanged: (val) {
                           _userAnswers[qId] = val;
@@ -431,39 +577,171 @@ class _QuizAttemptScreenState extends ConsumerState<QuizAttemptScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        OutlinedButton.icon(
+                        SecondaryButton(
+                          label: '← Previous',
                           onPressed: _currentIndex > 0
                               ? () => setState(() => _currentIndex--)
                               : null,
-                          icon: const Icon(Icons.arrow_back),
-                          label: const Text('Previous'),
                         ),
                         if (_currentIndex < _questions.length - 1)
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                            ),
+                          PrimaryButton(
+                            label: 'Next →',
                             onPressed: () => setState(() => _currentIndex++),
-                            icon: const Icon(Icons.arrow_forward),
-                            label: const Text('Next'),
                           )
                         else
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                            ),
+                          PrimaryButton(
+                            label: 'Submit Assessment',
                             onPressed: () => _submitAttempt(),
-                            icon: const Icon(Icons.check_circle_outline),
-                            label: const Text('Submit Quiz'),
                           ),
                       ],
                     ),
                   ],
                 ),
               ),
+      ),
+    );
+  }
+
+  Widget _buildQuestionNavigationHeader() {
+    final int total = _questions.length;
+    final int flaggedCount = _flaggedQuestions.length;
+
+    // Condition: <= 15 questions use numbered target tiles (minimum 32x32px, r4)
+    if (total <= 15) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: List.generate(total, (i) {
+          final q = _questions[i];
+          final id = q['question_id'] as String;
+          final bool isActive = i == _currentIndex;
+          final bool isAnswered = _userAnswers.containsKey(id) && _userAnswers[id]!.isNotEmpty;
+          final bool isFlagged = _flaggedQuestions.contains(id);
+
+          Color bgColor = AppColors.surface;
+          Color borderColor = AppColors.rule;
+          if (isActive) {
+            bgColor = AppColors.surfaceMid;
+            borderColor = AppColors.ruleStrong;
+          } else if (isFlagged) {
+            bgColor = AppColors.statusPendingBg;
+            borderColor = AppColors.statusPendingInk;
+          } else if (isAnswered) {
+            bgColor = AppColors.surfaceHigh;
+            borderColor = AppColors.rule;
+          }
+
+          return MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () => setState(() => _currentIndex = i),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(AppRadius.r4),
+                  border: Border.all(
+                    color: borderColor,
+                    width: isActive ? 2.0 : 1.0,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Text(
+                      '${i + 1}',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 13,
+                        fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                        color: isActive ? AppColors.inkPrimary : AppColors.inkSecondary,
+                      ),
+                    ),
+                    if (isAnswered && !isActive)
+                      Positioned(
+                        bottom: 2,
+                        right: 2,
+                        child: Text(
+                          '✓',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.statusPassInk,
+                          ),
+                        ),
+                      ),
+                    if (isFlagged)
+                      Positioned(
+                        top: 2,
+                        right: 2,
+                        child: Container(
+                          width: 5,
+                          height: 5,
+                          decoration: const BoxDecoration(
+                            color: AppColors.statusPendingInk,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      );
+    }
+
+    // > 15 questions: Segmented strip with dropdown question drawer
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMid,
+        borderRadius: BorderRadius.circular(AppRadius.r4),
+        border: Border.all(color: AppColors.rule, width: 1),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Question ${_currentIndex + 1} of $total${flaggedCount > 0 ? ' ($flaggedCount Flagged)' : ''}',
+            style: GoogleFonts.jetBrainsMono(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.inkPrimary,
+            ),
+          ),
+          DropdownButtonHideUnderline(
+            child: DropdownButton<int>(
+              value: _currentIndex,
+              dropdownColor: AppColors.surfaceHigh,
+              icon: const Icon(Icons.arrow_drop_down, color: AppColors.inkSecondary),
+              items: List.generate(total, (i) {
+                final id = _questions[i]['question_id'] as String;
+                final bool isAnswered = _userAnswers.containsKey(id) && _userAnswers[id]!.isNotEmpty;
+                final bool isFlagged = _flaggedQuestions.contains(id);
+                String suffix = '';
+                if (isFlagged) suffix += ' ⚑';
+                if (isAnswered) suffix += ' ✓';
+
+                return DropdownMenuItem<int>(
+                  value: i,
+                  child: Text(
+                    'Q${i + 1}$suffix',
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 13,
+                      color: AppColors.inkPrimary,
+                    ),
+                  ),
+                );
+              }),
+              onChanged: (val) {
+                if (val != null) setState(() => _currentIndex = val);
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -474,10 +474,17 @@ async def validate_quiz_blooms(
 @router.post("/quizzes/{quiz_id}/publish", response_model=QuizPublishResponse)
 async def publish_quiz(
     quiz_id: str,
+    force: bool = Query(default=False, description="Publish with exception note if Bloom distribution deviates"),
+    exception_note: Optional[str] = Query(default=None, description="Optional justification note for deviation"),
     user: Annotated[User, Depends(require_roles("professor", "admin"))] = None,
     db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
-    """Enforces Bloom's gate verification before transitioning assessment to PUBLISHED."""
+    """Enforces Bloom's gate verification before transitioning assessment to PUBLISHED.
+
+    Soft Advisory Gate:
+    If Bloom's taxonomy distribution deviates from departmental HEC targets,
+    faculty may review the advisory and publish with an exception note (`force=True`).
+    """
     try:
         q_uuid = uuid.UUID(quiz_id)
     except ValueError:
@@ -501,20 +508,25 @@ async def publish_quiz(
     # Execute Bloom's Quality Gate check
     gate_report = await validate_and_update_quiz_gate(quiz_id=quiz_id, db=db)
 
-    if not gate_report.is_approved:
+    if not gate_report.is_approved and not force:
         raise HTTPException(
             status_code=400,
             detail={
-                "message": "Assessment failed HEC Bloom's Quality Gate. Resolve violations before publishing.",
+                "message": "Assessment deviates from HEC Bloom's Quality Gate recommendations.",
                 "violations": gate_report.violations,
                 "recommendations": gate_report.recommendations,
                 "bloom_distribution": gate_report.bloom_distribution,
+                "can_override": True,
             },
         )
 
     # Publish assignment
     assignment.status = "published"
     quiz_config.bloom_gate_passed = True
+    if exception_note:
+        meta = dict(quiz_config.metadata_json or {})
+        meta["bloom_exception_note"] = exception_note
+        quiz_config.metadata_json = meta
     await db.commit()
 
     return QuizPublishResponse(

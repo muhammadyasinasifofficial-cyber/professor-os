@@ -55,10 +55,17 @@ class JournalScaffold extends ConsumerWidget {
           body: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── COL 1–2: Navigation Column (~180px) ───────────────────
-              SizedBox(
-                width: constraints.maxWidth >= 1280 ? 200 : 160,
-                child: _JournalNavColumn(currentPath: currentPath),
+              // ── COL 1–2: Navigation Column (220–285px with text scale support) ─────
+              Builder(
+                builder: (ctx) {
+                  final textScale = MediaQuery.textScalerOf(ctx).scale(1.0);
+                  final double baseWidth = constraints.maxWidth >= 1280 ? 250.0 : 224.0;
+                  final double navWidth = (baseWidth * textScale.clamp(1.0, 1.35)).clamp(220.0, 285.0);
+                  return SizedBox(
+                    width: navWidth,
+                    child: _JournalNavColumn(currentPath: currentPath),
+                  );
+                },
               ),
 
               // Divider between Nav and Workspace
@@ -222,10 +229,10 @@ class _JournalNavColumn extends ConsumerWidget {
             child: Text(
               'Spring 2027'.toUpperCase(),
               style: GoogleFonts.dmSans(
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.8,
-                color: AppColors.inkGhost,
+                color: AppColors.inkSecondary,
               ),
             ),
           ),
@@ -250,10 +257,10 @@ class _JournalNavColumn extends ConsumerWidget {
             child: Text(
               'NAVIGATION',
               style: GoogleFonts.dmSans(
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.8,
-                color: AppColors.inkGhost,
+                color: AppColors.inkSecondary,
               ),
             ),
           ),
@@ -301,10 +308,10 @@ class _JournalNavColumn extends ConsumerWidget {
             child: Text(
               'STATUS',
               style: GoogleFonts.dmSans(
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.8,
-                color: AppColors.inkGhost,
+                color: AppColors.inkSecondary,
               ),
             ),
           ),
@@ -441,7 +448,7 @@ class _JournalNavItem extends StatelessWidget {
       child: GestureDetector(
         onTap: () => context.go(path),
         child: Container(
-          height: 38,
+          constraints: const BoxConstraints(minHeight: 44),
           decoration: BoxDecoration(
             color: isSelected ? AppColors.surfaceMid : Colors.transparent,
             border: Border(
@@ -451,13 +458,13 @@ class _JournalNavItem extends StatelessWidget {
               ),
             ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           alignment: Alignment.centerLeft,
           child: Text(
             label,
             style: GoogleFonts.dmSans(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
+              fontSize: 14,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
               color: isSelected ? AppColors.inkPrimary : AppColors.inkSecondary,
             ),
           ),
