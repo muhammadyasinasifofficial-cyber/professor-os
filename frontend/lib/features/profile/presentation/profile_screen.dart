@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/theme_provider.dart';
+import '../../../shared/journal_ui/journal_components.dart';
 import '../../../core/utils/avatar_helper.dart';
 import '../../../core/utils/validators.dart';
 import '../../../shared/widgets/prof_badge.dart';
@@ -382,6 +384,112 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ),
 
+                // ── APPEARANCE & DESIGN SYSTEM ────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(AppRadius.r6),
+                      border: Border.all(color: AppColors.rule, width: 1),
+                    ),
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'APPEARANCE & DESIGN SYSTEM',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.8,
+                            color: AppColors.inkGhost,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Select your visual environment. You can switch between "The Journal" (v2 2026/2027) and "Marginalia" (v1 Classic) at any time.',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            color: AppColors.inkSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+
+                        // Design System Switcher
+                        Text(
+                          'Design Edition',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.inkPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          children: [
+                            _buildSelectionChip(
+                              label: 'The Journal v2 (2026/2027 Editorial)',
+                              isSelected: ref.watch(themeStateProvider).designSystem == DesignSystem.journal,
+                              onTap: () {
+                                ref.read(themeStateProvider.notifier).setDesignSystem(DesignSystem.journal);
+                                JournalToastManager.show(context, 'Switched to The Journal v2 Design');
+                              },
+                            ),
+                            _buildSelectionChip(
+                              label: 'Marginalia v1 (Classic Paper)',
+                              isSelected: ref.watch(themeStateProvider).designSystem == DesignSystem.marginalia,
+                              onTap: () {
+                                ref.read(themeStateProvider.notifier).setDesignSystem(DesignSystem.marginalia);
+                                JournalToastManager.show(context, 'Switched to Marginalia v1 Design');
+                              },
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 20),
+                        const Divider(color: AppColors.rule, height: 1),
+                        const SizedBox(height: 20),
+
+                        // Theme Mode Switcher
+                        Text(
+                          'Theme Palette',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.inkPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          children: [
+                            _buildSelectionChip(
+                              label: 'Pressroom Night (Dark - Default)',
+                              isSelected: ref.watch(themeStateProvider).themeMode == JournalThemeMode.dark,
+                              onTap: () {
+                                ref.read(themeStateProvider.notifier).setThemeMode(JournalThemeMode.dark);
+                                JournalToastManager.show(context, 'Theme set to Pressroom Night');
+                              },
+                            ),
+                            _buildSelectionChip(
+                              label: 'Pressroom Day (Light)',
+                              isSelected: ref.watch(themeStateProvider).themeMode == JournalThemeMode.light,
+                              onTap: () {
+                                ref.read(themeStateProvider.notifier).setThemeMode(JournalThemeMode.light);
+                                JournalToastManager.show(context, 'Theme set to Pressroom Day');
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
@@ -559,5 +667,54 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     padding: const EdgeInsets.only(bottom: 14), child: c))
                 .toList())
         : Row(children: children);
+  }
+
+  Widget _buildSelectionChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.surfaceMid : AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.r4),
+            border: Border.all(
+              color: isSelected ? AppColors.ruleStrong : AppColors.rule,
+              width: isSelected ? 1.5 : 1.0,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isSelected) ...[
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    color: AppColors.statusPassInk,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                label,
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected ? AppColors.inkPrimary : AppColors.inkSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

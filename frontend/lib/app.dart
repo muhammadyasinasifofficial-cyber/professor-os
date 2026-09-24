@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/router/app_router.dart';
 import '../core/theme/app_theme.dart';
+import '../core/theme/theme_provider.dart';
 import '../features/auth/providers/auth_provider.dart';
 
 class ProfessorOSApp extends ConsumerStatefulWidget {
@@ -45,6 +46,7 @@ class _ProfessorOSAppState extends ConsumerState<ProfessorOSApp> {
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
+    final themeState = ref.watch(themeStateProvider);
 
     return Listener(
       behavior: HitTestBehavior.translucent,
@@ -53,7 +55,7 @@ class _ProfessorOSAppState extends ConsumerState<ProfessorOSApp> {
       child: MaterialApp.router(
         title: 'ProfessorOS',
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
+        theme: AppTheme.themeFor(themeState.designSystem, themeState.themeMode),
         routerConfig: router,
       ),
     );

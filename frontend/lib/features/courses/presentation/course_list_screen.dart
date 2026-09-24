@@ -125,8 +125,8 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
                   children: [
                     Text(
                       isProf ? 'Course Ledger' : 'My Enrollments',
-                      style: GoogleFonts.fraunces(
-                        fontSize: isNarrow ? 28 : 32,
+                      style: GoogleFonts.dmSans(
+                        fontSize: isNarrow ? 24 : 28,
                         fontWeight: FontWeight.w600,
                         color: AppColors.inkPrimary,
                       ),
@@ -136,7 +136,7 @@ class _CourseListScreenState extends ConsumerState<CourseListScreen> {
                       isProf
                           ? 'Manage offerings, HEC rubrics & student cohorts.'
                           : 'Your active academic courses.',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.dmSans(
                         fontSize: 14,
                         color: AppColors.inkSecondary,
                       ),

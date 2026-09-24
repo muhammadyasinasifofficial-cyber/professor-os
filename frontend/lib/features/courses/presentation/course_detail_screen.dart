@@ -138,8 +138,8 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen>
                   child: Text(c['title'],
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.fraunces(
-                          fontWeight: FontWeight.w600,
+                      style: GoogleFonts.dmSerifDisplay(
+                          fontWeight: FontWeight.w400,
                           fontSize: 24,
                           color: AppColors.inkPrimary))),
             ],

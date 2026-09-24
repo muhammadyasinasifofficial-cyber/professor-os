@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/validators.dart';
+import '../../../shared/journal_ui/journal_components.dart';
 import '../providers/auth_provider.dart';
 import '../data/auth_repository.dart';
 import '../../../core/network/dio_client.dart';
@@ -133,13 +134,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 children: [
                   Text(
                     'ProfessorOS',
-                    style: GoogleFonts.fraunces(fontSize: 24, fontWeight: FontWeight.w600, color: AppColors.inkPrimary),
+                    style: GoogleFonts.dmSerifDisplay(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w400,
+                      color: AppColors.inkPrimary,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Sign in to your account',
-                    style: GoogleFonts.inter(fontSize: 14, color: AppColors.inkSecondary),
+                    'Sign in to your academic account',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      color: AppColors.inkSecondary,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
@@ -212,12 +220,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
                   
-                  ElevatedButton(
-                    onPressed: _loading ? null : _submit,
-                    style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
-                    child: _loading
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Text('Sign In'),
+                  PrimaryButton(
+                    label: 'Sign in',
+                    loadingLabel: 'Signing in…',
+                    isLoading: _loading,
+                    onPressed: _submit,
                   ),
                   if (_canUseBiometrics) ...[
                     const SizedBox(height: 16),

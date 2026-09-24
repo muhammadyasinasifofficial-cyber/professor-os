@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/error_parser.dart';
+import '../../../shared/journal_ui/journal_components.dart';
 import '../../../shared/widgets/prof_badge.dart';
 import '../../../shared/widgets/prof_card.dart';
 import '../../../shared/widgets/prof_shimmer.dart';
@@ -1664,7 +1665,7 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
                   ),
                   child: Text(
                     '${i + 1}',
-                    style: GoogleFonts.sourceCodePro(
+                    style: GoogleFonts.jetBrainsMono(
                         fontSize: 11, color: AppColors.textMuted),
                   ),
                 ),
@@ -1674,8 +1675,8 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
                     scrollDirection: Axis.horizontal,
                     child: Text(
                       lines[i],
-                      style: GoogleFonts.sourceCodePro(
-                          fontSize: 12, color: Colors.black87),
+                      style: GoogleFonts.jetBrainsMono(
+                          fontSize: 12, color: AppColors.inkPrimary),
                     ),
                   ),
                 ),
@@ -1693,10 +1694,10 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
     final rubricAsync = ref.watch(rubricProvider(widget.assignmentId));
 
     return Scaffold(
-      backgroundColor: AppColors.bgPage,
+      backgroundColor: AppColors.canvas,
       appBar: AppBar(
-        title: Text('SpeedGrader Dashboard',
-            style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+        title: Text('SpeedGrader',
+            style: GoogleFonts.dmSans(fontWeight: FontWeight.w500, fontSize: 16)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),

@@ -25,6 +25,8 @@ import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/admin/presentation/admin_dashboard_screen.dart';
 
 import '../theme/app_theme.dart';
+import '../theme/theme_provider.dart';
+import '../../shared/journal_ui/journal_scaffold.dart';
 import 'responsive_navigation.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -89,6 +91,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       ShellRoute(
         builder: (context, state, child) {
+          final themeState = ref.watch(themeStateProvider);
+          if (themeState.designSystem == DesignSystem.journal) {
+            return JournalScaffold(
+              currentPath: state.uri.path,
+              workspace: child,
+            );
+          }
+
           return LayoutBuilder(
             builder: (context, constraints) {
               final isMobile = shouldUseMobileNavigation(constraints.maxWidth);
@@ -100,7 +110,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               }
 
               return Scaffold(
-                backgroundColor: AppColors.bgPage,
+                backgroundColor: AppColorsMarginalia.bgPage,
                 body: Row(
                   children: [
                     _buildLedgerRail(context, state.uri.path, ref),

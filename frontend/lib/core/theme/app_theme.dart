@@ -1,67 +1,85 @@
-/// ProfessorOS – "Marginalia" Design System
-/// Light mode ("Paper"): Warm canvas, ink-navy text, strict semantic colors.
+/// ProfessorOS – Design System v2 "The Journal"
+/// Reference implementation for Dark Mode ("Pressroom Night"),
+/// Light Mode ("Pressroom Day"), and v1 "Marginalia" backward compatibility.
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'theme_provider.dart';
 
+// ── The Journal v2 Colors (Dark Mode / Pressroom Night) ───────────────
 class AppColors {
   AppColors._();
 
-  // ── Backgrounds ───────────────────────────────────
-  static const Color bgPage     = Color(0xFFF6F5F0); // Paper canvas
-  static const Color bgCard     = Color(0xFFFFFFFF); // Content surfaces
-  static const Color bgSurface  = Color(0xFFFFFFFF); // Alias
-  static const Color bgMargin   = Color(0xFFF6F5F0); // Margin rail / sidebar
-  static const Color bgHover    = Color(0xFFFBF1EE); // Faint ink-wash tint
-  static const Color bgActive   = Color(0xFFEFEAE0); // Selected nav item / tab
-  static const Color bgElevated = Color(0xFFFFFFFF); // Alias for legacy code
-  static const Color bgInput    = Color(0xFFFFFFFF); // Inputs use card background with borders
-
-  // ── Text / Ink ───────────────────────────────────
-  static const Color inkPrimary   = Color(0xFF1E2A38); // Fountain-pen navy
-  static const Color inkSecondary = Color(0xFF5B6470); // Secondary metadata
-  static const Color inkFaint     = Color(0xFF9CA0A6); // Placeholders, muted text
+  // ── Surfaces ──────────────────────────────────────────────────
+  static const Color canvas       = Color(0xFF111113); // page background
+  static const Color surface      = Color(0xFF18181C); // cards, containers
+  static const Color surfaceMid   = Color(0xFF202026); // hover, active rows
+  static const Color surfaceHigh  = Color(0xFF2A2A32); // popovers, drawers
   
-  // Legacy aliases to prevent build errors before full refactor
+  // ── Borders (1px only) ─────────────────────────────────────────
+  static const Color rule         = Color(0xFF2E2E38); // hairline dividers
+  static const Color ruleStrong   = Color(0xFF3D3D4A); // section dividers
+  
+  // ── Ink ───────────────────────────────────────────────────────
+  static const Color inkPrimary   = Color(0xFFEEEEF0); // all primary text
+  static const Color inkSecondary = Color(0xFF9090A0); // metadata, labels, captions
+  static const Color inkGhost     = Color(0xFF55555F); // placeholders, disabled only
+  static const Color inkAccent    = Color(0xFFC8D0FF); // links, active nav item (TEXT ONLY)
+  
+  // ── Status pairs (ALWAYS use bg + ink together) ───────────────
+  static const Color statusPassBg       = Color(0xFF0D2B1A);
+  static const Color statusPassInk      = Color(0xFF4DBF7F);
+  static const Color statusPendingBg    = Color(0xFF2B2010);
+  static const Color statusPendingInk   = Color(0xFFD4973A);
+  static const Color statusCriticalBg   = Color(0xFF2B1212);
+  static const Color statusCriticalInk  = Color(0xFFE05050);
+
+  // ── Backward-compatible semantic aliases for existing code ────
+  static const Color bgPage     = canvas;
+  static const Color bgCard     = surface;
+  static const Color bgSurface  = surface;
+  static const Color bgMargin   = surface;
+  static const Color bgHover    = surfaceMid;
+  static const Color bgActive   = surfaceMid;
+  static const Color bgElevated = surfaceHigh;
+  static const Color bgInput    = surface;
+
   static const Color textPrimary   = inkPrimary;
   static const Color textSecondary = inkSecondary;
-  static const Color textMuted     = inkFaint;
+  static const Color textMuted     = inkGhost;
+  static const Color inkFaint      = inkGhost;
 
-  // ── Borders ──────────────────────────────────────
-  static const Color marginRule   = Color(0xFFE4E1D8); // Hairline borders
-  static const Color borderStrong = Color(0xFFD4CFC2); // Emphasized dividers / focus
-  static const Color border       = marginRule; // Legacy alias
-  static const Color borderFocus  = signal;
+  static const Color marginRule   = rule;
+  static const Color borderStrong = ruleStrong;
+  static const Color border       = rule;
+  static const Color borderFocus  = inkAccent;
 
-  // ── Semantic & Accents ───────────────────────────
-  static const Color feedbackRed  = Color(0xFFB4432E); // RESERVED: grading marks only
-  static const Color verified     = Color(0xFF3F6B4F); // Success / fully graded
-  static const Color pending      = Color(0xFFB5872A); // Awaiting grading
-  static const Color signal       = Color(0xFF2F5D8A); // Interactivity, links, primary buttons
+  static const Color feedbackRed  = statusCriticalInk;
+  static const Color verified     = statusPassInk;
+  static const Color pending      = statusPendingInk;
+  static const Color signal       = inkAccent;
 
-  // Legacy aliases
-  static const Color primary       = signal;
-  static const Color emerald       = verified;
-  static const Color primaryIndigo = signal;
-  static const Color primaryCyan   = signal;
-  static const Color primaryViolet = signal;
-  static const Color primaryMid    = signal;
-  static const Color primarySoft   = bgActive;
-  static const Color successGreen  = verified;
-  static const Color dangerRose    = feedbackRed;
-  static const Color accentAmber   = pending;
-  static const Color accentCyan    = signal;
-  static const Color accentPink    = signal;
+  static const Color primary       = inkPrimary;
+  static const Color emerald       = statusPassInk;
+  static const Color primaryIndigo = inkAccent;
+  static const Color primaryCyan   = inkAccent;
+  static const Color primaryViolet = inkAccent;
+  static const Color primaryMid    = inkAccent;
+  static const Color primarySoft   = surfaceMid;
+  static const Color successGreen  = statusPassInk;
+  static const Color dangerRose    = statusCriticalInk;
+  static const Color accentAmber   = statusPendingInk;
+  static const Color accentCyan    = inkAccent;
+  static const Color accentPink    = inkAccent;
 
-  // ── Auth hero panel (Legacy, to be removed) ────────
-  static const Color heroBg        = bgPage;
-  static const Color heroBg2       = bgPage;
+  static const Color heroBg        = canvas;
+  static const Color heroBg2       = canvas;
 
   static Color badgeColor(String role) {
     switch (role.toLowerCase()) {
-      case 'professor': return signal;
-      case 'student':   return verified;
-      case 'ta':        return pending;
+      case 'professor': return inkAccent;
+      case 'student':   return statusPassInk;
+      case 'ta':        return statusPendingInk;
       case 'admin':     return inkPrimary;
       default:          return inkSecondary;
     }
@@ -69,115 +87,439 @@ class AppColors {
 
   static Color hecGradeColor(String grade) {
     switch (grade.toUpperCase()) {
-      case 'W': return verified;
-      case 'X': return signal;
-      case 'Y': return pending;
-      case 'Z': return feedbackRed;
+      case 'W': return statusPassInk;
+      case 'X': return inkAccent;
+      case 'Y': return statusPendingInk;
+      case 'Z': return statusCriticalInk;
       default:  return inkSecondary;
     }
   }
 }
 
+// ── The Journal v2 Light Mode ("Pressroom Day") ────────────────────────
+class AppColorsLight {
+  AppColorsLight._();
+
+  static const Color canvas       = Color(0xFFF2F1EE);
+  static const Color surface      = Color(0xFFEBEAE6);
+  static const Color surfaceMid   = Color(0xFFE2E1DC);
+  static const Color surfaceHigh  = Color(0xFFD8D7D1);
+  static const Color rule         = Color(0xFFCCCBC5);
+  static const Color ruleStrong   = Color(0xFFB8B7B0);
+  static const Color inkPrimary   = Color(0xFF161614);
+  static const Color inkSecondary = Color(0xFF6A6A62);
+  static const Color inkGhost     = Color(0xFFA0A099);
+  static const Color inkAccent    = Color(0xFF1A3A9C);
+  static const Color statusPassBg       = Color(0xFFD6EFE2);
+  static const Color statusPassInk      = Color(0xFF1A6B3A);
+  static const Color statusPendingBg    = Color(0xFFF5E9CE);
+  static const Color statusPendingInk   = Color(0xFF7A5218);
+  static const Color statusCriticalBg   = Color(0xFFF5DADA);
+  static const Color statusCriticalInk  = Color(0xFF8B1C1C);
+}
+
+// ── Marginalia v1 Palette (Paper Canvas Classic) ──────────────────────
+class AppColorsMarginalia {
+  AppColorsMarginalia._();
+
+  static const Color bgPage     = Color(0xFFF6F5F0);
+  static const Color bgCard     = Color(0xFFFFFFFF);
+  static const Color bgSurface  = Color(0xFFFFFFFF);
+  static const Color bgMargin   = Color(0xFFF6F5F0);
+  static const Color bgHover    = Color(0xFFFBF1EE);
+  static const Color bgActive   = Color(0xFFEFEAE0);
+  static const Color bgElevated = Color(0xFFFFFFFF);
+  static const Color bgInput    = Color(0xFFFFFFFF);
+  static const Color inkPrimary   = Color(0xFF1E2A38);
+  static const Color inkSecondary = Color(0xFF5B6470);
+  static const Color inkFaint     = Color(0xFF9CA0A6);
+  static const Color marginRule   = Color(0xFFE4E1D8);
+  static const Color borderStrong = Color(0xFFD4CFC2);
+  static const Color feedbackRed  = Color(0xFFB4432E);
+  static const Color verified     = Color(0xFF3F6B4F);
+  static const Color pending      = Color(0xFFB5872A);
+  static const Color signal       = Color(0xFF2F5D8A);
+}
+
+// ── Spacing Tokens ────────────────────────────────────────────────────
+class AppSpacing {
+  AppSpacing._();
+  static const s2  = 2.0;   // icon-to-label gap
+  static const s4  = 4.0;   // between metadata items in same row
+  static const s8  = 8.0;   // compact component internal padding
+  static const s12 = 12.0;  // label to content gap
+  static const s16 = 16.0;  // standard card padding (all sides)
+  static const s24 = 24.0;  // between distinct sections
+  static const s32 = 32.0;  // between major layout zones
+  static const s48 = 48.0;  // page-level horizontal margin
+}
+
+// ── Border Radius Tokens ──────────────────────────────────────────────
+class AppRadius {
+  AppRadius._();
+  static const r2   = 2.0;   // stamp badges, toasts, code blocks
+  static const r4   = 4.0;   // buttons (more press-like, less pill)
+  static const r6   = 6.0;   // cards, surface containers
+  static const r8   = 8.0;   // input fields, drawers
+}
+
+// ── Typography Tokens ─────────────────────────────────────────────────
+class AppText {
+  AppText._();
+
+  // DM Serif Display — rare, deliberate (3 contexts only: course name header, HEC sections, wordmark)
+  static TextStyle get display => GoogleFonts.dmSerifDisplay(
+    fontSize: 26,
+    fontWeight: FontWeight.w400,
+    height: 1.2,
+    letterSpacing: -0.3,
+    color: AppColors.inkPrimary,
+  );
+
+  // DM Sans — UI and content
+  static TextStyle get title => GoogleFonts.dmSans(
+    fontSize: 18,
+    fontWeight: FontWeight.w500,
+    height: 1.3,
+    letterSpacing: -0.1,
+    color: AppColors.inkPrimary,
+  );
+  static TextStyle get body => GoogleFonts.dmSans(
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    height: 1.65,
+    color: AppColors.inkPrimary,
+  );
+  static TextStyle get bodyDense => GoogleFonts.dmSans(
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    height: 1.45,
+    color: AppColors.inkPrimary,
+  );
+  static TextStyle get label => GoogleFonts.dmSans(
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+    height: 1.1,
+    letterSpacing: 0.15,
+    color: AppColors.inkSecondary,
+  );
+  static TextStyle get caption => GoogleFonts.dmSans(
+    fontSize: 11,
+    fontWeight: FontWeight.w400,
+    height: 1.4,
+    letterSpacing: 0.2,
+    color: AppColors.inkGhost,
+  );
+
+  // JetBrains Mono — numbers, code, IDs
+  static TextStyle get mono => GoogleFonts.jetBrainsMono(
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    height: 1.55,
+    color: AppColors.inkPrimary,
+  );
+  static TextStyle get monoLarge => GoogleFonts.jetBrainsMono(
+    fontSize: 18,
+    fontWeight: FontWeight.w400,
+    height: 1.3,
+    color: AppColors.inkPrimary,
+  );
+  static TextStyle get monoStat => GoogleFonts.jetBrainsMono(
+    fontSize: 28,
+    fontWeight: FontWeight.w400,
+    height: 1.1,
+    color: AppColors.inkPrimary,
+  );
+}
+
+// ── Gradients & Shadows ───────────────────────────────────────────────
 class AppGradients {
   AppGradients._();
-
-  // Marginalia uses flat solid fills. Returning flat gradients to prevent build errors.
-  static const LinearGradient primaryButton = LinearGradient(
-    colors: [AppColors.signal, AppColors.signal],
-  );
-
-  static const LinearGradient aurora = LinearGradient(
-    colors: [AppColors.bgPage, AppColors.bgPage],
-  );
-
-  static const LinearGradient heroPanel = LinearGradient(
-    colors: [AppColors.bgPage, AppColors.bgPage],
-  );
-
-  static const LinearGradient cardSheen = LinearGradient(
-    colors: [Colors.transparent, Colors.transparent],
-  );
+  // Zero gradients in v2
+  static const LinearGradient primaryButton = LinearGradient(colors: [AppColors.inkPrimary, AppColors.inkPrimary]);
+  static const LinearGradient aurora = LinearGradient(colors: [AppColors.canvas, AppColors.canvas]);
+  static const LinearGradient heroPanel = LinearGradient(colors: [AppColors.surface, AppColors.surface]);
+  static const LinearGradient cardSheen = LinearGradient(colors: [Colors.transparent, Colors.transparent]);
 }
 
 class AppShadows {
   AppShadows._();
-
-  // Marginalia shadows are near-invisible
-  static List<BoxShadow> get card => [
-    const BoxShadow(color: Color(0x051E2A38), blurRadius: 2, offset: Offset(0, 1)),
-  ];
-
-  static List<BoxShadow> get elevated => [
-    const BoxShadow(color: Color(0x121E2A38), blurRadius: 24, offset: Offset(0, 8)),
-  ];
-
-  static List<BoxShadow> get buttonGlow => []; // No glows
-
-  static List<BoxShadow> get sidebar => [
-    const BoxShadow(color: Color(0x021E2A38), blurRadius: 4, offset: Offset(2, 0)),
-  ];
+  // Zero shadows in v2
+  static List<BoxShadow> get card => const [];
+  static List<BoxShadow> get elevated => const [];
+  static List<BoxShadow> get buttonGlow => const [];
+  static List<BoxShadow> get sidebar => const [];
 }
 
+// ── AppTheme Factory ──────────────────────────────────────────────────
 class AppTheme {
   AppTheme._();
 
-  static ThemeData get light {
-    final frauncesTT = GoogleFonts.frauncesTextTheme();
-    final interTT  = GoogleFonts.interTextTheme();
-    // For mono, we'll manually apply JetBrains Mono to specific styles later, 
-    // but the default body remains Inter.
+  static ThemeData get light => journalLight;
+
+  static ThemeData themeFor(DesignSystem design, JournalThemeMode mode) {
+    if (design == DesignSystem.marginalia) {
+      return marginaliaLight;
+    }
+    return mode == JournalThemeMode.light ? journalLight : journalDark;
+  }
+
+  // ── The Journal v2 - Dark Mode (Default "Pressroom Night") ───────────
+  static ThemeData get journalDark {
+    final dmSansTT = GoogleFonts.dmSansTextTheme(ThemeData.dark().textTheme);
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: AppColors.canvas,
+      colorScheme: const ColorScheme(
+        brightness: Brightness.dark,
+        primary: AppColors.inkPrimary,
+        onPrimary: AppColors.canvas,
+        secondary: AppColors.inkSecondary,
+        onSecondary: AppColors.inkPrimary,
+        surface: AppColors.surface,
+        onSurface: AppColors.inkPrimary,
+        error: AppColors.statusCriticalInk,
+        onError: AppColors.canvas,
+      ),
+      textTheme: dmSansTT.copyWith(
+        displayLarge:  AppText.display.copyWith(fontSize: 32),
+        displayMedium: AppText.display.copyWith(fontSize: 26),
+        displaySmall:  AppText.display.copyWith(fontSize: 22),
+        headlineLarge: AppText.title.copyWith(fontSize: 24, fontWeight: FontWeight.w600),
+        headlineMedium:AppText.title.copyWith(fontSize: 20, fontWeight: FontWeight.w600),
+        headlineSmall: AppText.title.copyWith(fontSize: 18),
+        titleLarge:    AppText.title,
+        titleMedium:   AppText.title.copyWith(fontSize: 16),
+        titleSmall:    AppText.title.copyWith(fontSize: 14),
+        bodyLarge:     AppText.body,
+        bodyMedium:    AppText.bodyDense,
+        bodySmall:     AppText.caption,
+        labelLarge:    AppText.label.copyWith(fontSize: 14),
+        labelMedium:   AppText.label,
+        labelSmall:    AppText.caption,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppColors.surface,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.r8), borderSide: const BorderSide(color: AppColors.rule, width: 1)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.r8), borderSide: const BorderSide(color: AppColors.rule, width: 1)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.r8), borderSide: const BorderSide(color: AppColors.ruleStrong, width: 1.5)),
+        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.r8), borderSide: const BorderSide(color: AppColors.statusCriticalInk, width: 1)),
+        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.r8), borderSide: const BorderSide(color: AppColors.statusCriticalInk, width: 1.5)),
+        labelStyle: GoogleFonts.dmSans(color: AppColors.inkSecondary, fontSize: 13),
+        hintStyle:  GoogleFonts.dmSans(color: AppColors.inkGhost, fontSize: 13),
+        errorStyle: GoogleFonts.dmSans(color: AppColors.statusCriticalInk, fontSize: 12),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.inkPrimary,
+          foregroundColor: AppColors.canvas,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.r4)),
+          textStyle: GoogleFonts.dmSans(fontWeight: FontWeight.w500, fontSize: 14),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.inkPrimary,
+          side: const BorderSide(color: AppColors.ruleStrong, width: 1),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.r4)),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+          textStyle: GoogleFonts.dmSans(fontWeight: FontWeight.w500, fontSize: 14),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.inkAccent,
+          textStyle: GoogleFonts.dmSans(fontWeight: FontWeight.w500, fontSize: 14),
+        ),
+      ),
+      cardTheme: CardTheme(
+        color: AppColors.surface,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.r6),
+          side: const BorderSide(color: AppColors.rule, width: 1),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(color: AppColors.rule, thickness: 1),
+      appBarTheme: AppBarTheme(
+        backgroundColor: AppColors.canvas,
+        foregroundColor: AppColors.inkPrimary,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: AppText.display.copyWith(fontSize: 20),
+        iconTheme: const IconThemeData(color: AppColors.inkPrimary),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: AppColors.surface,
+        contentTextStyle: GoogleFonts.dmSans(color: AppColors.inkPrimary, fontSize: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.r2),
+          side: const BorderSide(color: AppColors.rule, width: 1),
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // ── The Journal v2 - Light Mode ("Pressroom Day") ───────────────────
+  static ThemeData get journalLight {
+    final dmSansTT = GoogleFonts.dmSansTextTheme(ThemeData.light().textTheme);
 
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      scaffoldBackgroundColor: AppColors.bgPage,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.signal,
-        primary: AppColors.signal,
-        secondary: AppColors.inkSecondary,
-        surface: AppColors.bgCard,
-        error: AppColors.feedbackRed,
+      scaffoldBackgroundColor: AppColorsLight.canvas,
+      colorScheme: const ColorScheme(
+        brightness: Brightness.light,
+        primary: AppColorsLight.inkPrimary,
+        onPrimary: AppColorsLight.canvas,
+        secondary: AppColorsLight.inkSecondary,
+        onSecondary: AppColorsLight.inkPrimary,
+        surface: AppColorsLight.surface,
+        onSurface: AppColorsLight.inkPrimary,
+        error: AppColorsLight.statusCriticalInk,
+        onError: AppColorsLight.canvas,
       ),
-      textTheme: TextTheme(
-        // Headings & Titles: Fraunces
-        displayLarge:  frauncesTT.displayLarge?.copyWith(color: AppColors.inkPrimary, fontWeight: FontWeight.w600, letterSpacing: -0.01),
-        displayMedium: frauncesTT.displayMedium?.copyWith(color: AppColors.inkPrimary, fontWeight: FontWeight.w600, letterSpacing: -0.01),
-        displaySmall:  frauncesTT.displaySmall?.copyWith(color: AppColors.inkPrimary, fontWeight: FontWeight.w600, letterSpacing: -0.01),
-        headlineLarge: frauncesTT.headlineLarge?.copyWith(color: AppColors.inkPrimary, fontWeight: FontWeight.w600, letterSpacing: -0.01),
-        headlineMedium:frauncesTT.headlineMedium?.copyWith(color: AppColors.inkPrimary, fontWeight: FontWeight.w600, fontSize: 28),
-        headlineSmall: frauncesTT.headlineSmall?.copyWith(color: AppColors.inkPrimary, fontWeight: FontWeight.w600, fontSize: 20),
-        titleLarge:    frauncesTT.titleLarge?.copyWith(color: AppColors.inkPrimary, fontWeight: FontWeight.w600),
-        titleMedium:   frauncesTT.titleMedium?.copyWith(color: AppColors.inkPrimary, fontWeight: FontWeight.w500),
-        titleSmall:    frauncesTT.titleSmall?.copyWith(color: AppColors.inkPrimary, fontWeight: FontWeight.w500),
-        
-        // Body & UI: Inter
-        bodyLarge:     interTT.bodyLarge?.copyWith(color: AppColors.inkPrimary, fontSize: 16),
-        bodyMedium:    interTT.bodyMedium?.copyWith(color: AppColors.inkPrimary, fontSize: 14),
-        bodySmall:     interTT.bodySmall?.copyWith(color: AppColors.inkSecondary, fontSize: 13),
-        
-        // Labels & Captions: Inter
-        labelLarge:    interTT.labelLarge?.copyWith(color: AppColors.inkPrimary, fontWeight: FontWeight.w500, fontSize: 14),
-        labelMedium:   interTT.labelMedium?.copyWith(color: AppColors.inkSecondary, fontWeight: FontWeight.w500, fontSize: 12),
-        labelSmall:    interTT.labelSmall?.copyWith(color: AppColors.inkSecondary, fontWeight: FontWeight.w600, fontSize: 11, letterSpacing: 0.05),
+      textTheme: dmSansTT.copyWith(
+        displayLarge:  AppText.display.copyWith(fontSize: 32, color: AppColorsLight.inkPrimary),
+        displayMedium: AppText.display.copyWith(fontSize: 26, color: AppColorsLight.inkPrimary),
+        displaySmall:  AppText.display.copyWith(fontSize: 22, color: AppColorsLight.inkPrimary),
+        headlineLarge: AppText.title.copyWith(fontSize: 24, fontWeight: FontWeight.w600, color: AppColorsLight.inkPrimary),
+        headlineMedium:AppText.title.copyWith(fontSize: 20, fontWeight: FontWeight.w600, color: AppColorsLight.inkPrimary),
+        headlineSmall: AppText.title.copyWith(fontSize: 18, color: AppColorsLight.inkPrimary),
+        titleLarge:    AppText.title.copyWith(color: AppColorsLight.inkPrimary),
+        titleMedium:   AppText.title.copyWith(fontSize: 16, color: AppColorsLight.inkPrimary),
+        titleSmall:    AppText.title.copyWith(fontSize: 14, color: AppColorsLight.inkPrimary),
+        bodyLarge:     AppText.body.copyWith(color: AppColorsLight.inkPrimary),
+        bodyMedium:    AppText.bodyDense.copyWith(color: AppColorsLight.inkPrimary),
+        bodySmall:     AppText.caption.copyWith(color: AppColorsLight.inkSecondary),
+        labelLarge:    AppText.label.copyWith(fontSize: 14, color: AppColorsLight.inkPrimary),
+        labelMedium:   AppText.label.copyWith(color: AppColorsLight.inkSecondary),
+        labelSmall:    AppText.caption.copyWith(color: AppColorsLight.inkGhost),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.bgInput,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.marginRule)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.marginRule)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.signal, width: 2)),
-        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.feedbackRed)),
-        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.feedbackRed, width: 2)),
-        labelStyle: GoogleFonts.inter(color: AppColors.inkSecondary, fontSize: 14),
-        hintStyle:  GoogleFonts.inter(color: AppColors.inkFaint, fontSize: 14),
-        errorStyle: GoogleFonts.inter(color: AppColors.feedbackRed, fontSize: 12),
-        prefixIconColor: AppColors.inkSecondary,
-        suffixIconColor: AppColors.inkSecondary,
+        fillColor: AppColorsLight.surface,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.r8), borderSide: const BorderSide(color: AppColorsLight.rule, width: 1)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.r8), borderSide: const BorderSide(color: AppColorsLight.rule, width: 1)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.r8), borderSide: const BorderSide(color: AppColorsLight.ruleStrong, width: 1.5)),
+        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.r8), borderSide: const BorderSide(color: AppColorsLight.statusCriticalInk, width: 1)),
+        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.r8), borderSide: const BorderSide(color: AppColorsLight.statusCriticalInk, width: 1.5)),
+        labelStyle: GoogleFonts.dmSans(color: AppColorsLight.inkSecondary, fontSize: 13),
+        hintStyle:  GoogleFonts.dmSans(color: AppColorsLight.inkGhost, fontSize: 13),
+        errorStyle: GoogleFonts.dmSans(color: AppColorsLight.statusCriticalInk, fontSize: 12),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.signal,
+          backgroundColor: AppColorsLight.inkPrimary,
+          foregroundColor: AppColorsLight.canvas,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.r4)),
+          textStyle: GoogleFonts.dmSans(fontWeight: FontWeight.w500, fontSize: 14),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColorsLight.inkPrimary,
+          side: const BorderSide(color: AppColorsLight.ruleStrong, width: 1),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.r4)),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+          textStyle: GoogleFonts.dmSans(fontWeight: FontWeight.w500, fontSize: 14),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColorsLight.inkAccent,
+          textStyle: GoogleFonts.dmSans(fontWeight: FontWeight.w500, fontSize: 14),
+        ),
+      ),
+      cardTheme: CardTheme(
+        color: AppColorsLight.surface,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.r6),
+          side: const BorderSide(color: AppColorsLight.rule, width: 1),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(color: AppColorsLight.rule, thickness: 1),
+      appBarTheme: AppBarTheme(
+        backgroundColor: AppColorsLight.canvas,
+        foregroundColor: AppColorsLight.inkPrimary,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: AppText.display.copyWith(fontSize: 20, color: AppColorsLight.inkPrimary),
+        iconTheme: const IconThemeData(color: AppColorsLight.inkPrimary),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: AppColorsLight.surface,
+        contentTextStyle: GoogleFonts.dmSans(color: AppColorsLight.inkPrimary, fontSize: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.r2),
+          side: const BorderSide(color: AppColorsLight.rule, width: 1),
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // ── Marginalia v1 - Classic Light Mode ──────────────────────────────
+  static ThemeData get marginaliaLight {
+    final frauncesTT = GoogleFonts.frauncesTextTheme();
+    final interTT = GoogleFonts.interTextTheme();
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: AppColorsMarginalia.bgPage,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: AppColorsMarginalia.signal,
+        primary: AppColorsMarginalia.signal,
+        secondary: AppColorsMarginalia.inkSecondary,
+        surface: AppColorsMarginalia.bgCard,
+        error: AppColorsMarginalia.feedbackRed,
+      ),
+      textTheme: TextTheme(
+        displayLarge:  frauncesTT.displayLarge?.copyWith(color: AppColorsMarginalia.inkPrimary, fontWeight: FontWeight.w600),
+        displayMedium: frauncesTT.displayMedium?.copyWith(color: AppColorsMarginalia.inkPrimary, fontWeight: FontWeight.w600),
+        displaySmall:  frauncesTT.displaySmall?.copyWith(color: AppColorsMarginalia.inkPrimary, fontWeight: FontWeight.w600),
+        headlineLarge: frauncesTT.headlineLarge?.copyWith(color: AppColorsMarginalia.inkPrimary, fontWeight: FontWeight.w600),
+        headlineMedium:frauncesTT.headlineMedium?.copyWith(color: AppColorsMarginalia.inkPrimary, fontWeight: FontWeight.w600, fontSize: 28),
+        headlineSmall: frauncesTT.headlineSmall?.copyWith(color: AppColorsMarginalia.inkPrimary, fontWeight: FontWeight.w600, fontSize: 20),
+        titleLarge:    frauncesTT.titleLarge?.copyWith(color: AppColorsMarginalia.inkPrimary, fontWeight: FontWeight.w600),
+        titleMedium:   frauncesTT.titleMedium?.copyWith(color: AppColorsMarginalia.inkPrimary, fontWeight: FontWeight.w500),
+        titleSmall:    frauncesTT.titleSmall?.copyWith(color: AppColorsMarginalia.inkPrimary, fontWeight: FontWeight.w500),
+        bodyLarge:     interTT.bodyLarge?.copyWith(color: AppColorsMarginalia.inkPrimary, fontSize: 16),
+        bodyMedium:    interTT.bodyMedium?.copyWith(color: AppColorsMarginalia.inkPrimary, fontSize: 14),
+        bodySmall:     interTT.bodySmall?.copyWith(color: AppColorsMarginalia.inkSecondary, fontSize: 13),
+        labelLarge:    interTT.labelLarge?.copyWith(color: AppColorsMarginalia.inkPrimary, fontWeight: FontWeight.w500, fontSize: 14),
+        labelMedium:   interTT.labelMedium?.copyWith(color: AppColorsMarginalia.inkSecondary, fontWeight: FontWeight.w500, fontSize: 12),
+        labelSmall:    interTT.labelSmall?.copyWith(color: AppColorsMarginalia.inkSecondary, fontWeight: FontWeight.w600, fontSize: 11),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppColorsMarginalia.bgInput,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColorsMarginalia.marginRule)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColorsMarginalia.marginRule)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColorsMarginalia.signal, width: 2)),
+        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColorsMarginalia.feedbackRed)),
+        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColorsMarginalia.feedbackRed, width: 2)),
+        labelStyle: GoogleFonts.inter(color: AppColorsMarginalia.inkSecondary, fontSize: 14),
+        hintStyle:  GoogleFonts.inter(color: AppColorsMarginalia.inkFaint, fontSize: 14),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColorsMarginalia.signal,
           foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
@@ -185,52 +527,13 @@ class AppTheme {
           textStyle: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 14),
         ),
       ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: AppColors.signal,
-          textStyle: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 14),
-        ),
-      ),
       cardTheme: CardTheme(
-        color: AppColors.bgCard,
+        color: AppColorsMarginalia.bgCard,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: AppColors.marginRule),
-        ),
-      ),
-      chipTheme: ChipThemeData(
-        backgroundColor: AppColors.bgMargin,
-        selectedColor: AppColors.bgActive,
-        labelStyle: GoogleFonts.inter(fontSize: 13, color: AppColors.inkPrimary),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        side: const BorderSide(color: AppColors.marginRule),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      ),
-      dividerTheme: const DividerThemeData(color: AppColors.marginRule, thickness: 1),
-      appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.bgPage,
-        foregroundColor: AppColors.inkPrimary,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        titleTextStyle: GoogleFonts.fraunces(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.inkPrimary),
-        iconTheme: const IconThemeData(color: AppColors.inkPrimary),
-      ),
-      snackBarTheme: SnackBarThemeData(
-        backgroundColor: AppColors.inkPrimary,
-        contentTextStyle: GoogleFonts.inter(color: AppColors.bgPage, fontSize: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        behavior: SnackBarBehavior.floating,
-      ),
-      dropdownMenuTheme: DropdownMenuThemeData(
-        menuStyle: MenuStyle(
-          backgroundColor: const WidgetStatePropertyAll(AppColors.bgCard),
-          shape: WidgetStatePropertyAll(RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: const BorderSide(color: AppColors.marginRule),
-          )),
-          elevation: const WidgetStatePropertyAll(4),
+          side: const BorderSide(color: AppColorsMarginalia.marginRule),
         ),
       ),
     );

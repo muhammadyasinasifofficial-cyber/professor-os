@@ -19,8 +19,8 @@ class ProfBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: bgColor.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(8),
+        color: bgColor.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(AppRadius.r2),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -36,8 +36,8 @@ class ProfBadge extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             label,
-            style: GoogleFonts.inter(
-              fontSize: 10,
+            style: GoogleFonts.dmSans(
+              fontSize: 11,
               fontWeight: FontWeight.w500,
               color: bgColor,
             ),

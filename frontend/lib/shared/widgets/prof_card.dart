@@ -33,7 +33,7 @@ class _ProfCardState extends State<ProfCard> {
       clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.r6),
         border: Border(
           top: BorderSide(color: borderColor, width: 1),
           right: BorderSide(color: borderColor, width: 1),
