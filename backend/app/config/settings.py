@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     MAX_LOGIN_ATTEMPTS: int = 5
     LOCKOUT_DURATION_MINUTES: int = 15
 
+    # Optional one-time bootstrap value. Never use a source-code default.
+    INITIAL_ADMIN_PASSWORD: str = ""
+
     # ── Outbound Email ──────────────────────────────────────────────────
     EMAIL_BACKEND: str = "smtp"  # "smtp", "resend", or "console"
     EMAIL_FROM: str = "noreply@professor-os.edu.pk"

@@ -42,12 +42,13 @@ async def list_courses(
 @router.post("", response_model=CourseResponse, status_code=201)
 async def create_course(
     body: CourseCreate,
-    user: Annotated[User, Depends(require_roles("admin"))],
+    user: Annotated[User, Depends(require_roles("admin", "professor"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     svc = CourseService(db)
     try:
-        course = await svc.create_course(body, body.professor_id)
+        prof_id = user.id if user.role == "professor" else (body.professor_id or user.id)
+        course = await svc.create_course(body, prof_id)
         return CourseResponse.model_validate(course)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))

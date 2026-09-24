@@ -36,7 +36,7 @@ class Course(Base):
     final_weight: Mapped[int] = mapped_column(Integer, default=40)
 
     # ── Foreign Keys ──────────────────────────────────
-    professor_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    professor_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True)
 
     # ── Timestamps ────────────────────────────────────
     created_at: Mapped[datetime] = mapped_column(
@@ -67,7 +67,7 @@ class CLO(Base):
     __tablename__ = "clos"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), nullable=False, index=True)
     code: Mapped[str] = mapped_column(String(20), nullable=False)  # e.g., "CLO-1"
     description: Mapped[str] = mapped_column(Text, nullable=False)
 
@@ -82,8 +82,8 @@ class Enrollment(Base):
     __tablename__ = "enrollments"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     role: Mapped[str] = mapped_column(String(20), nullable=False, default="student")  # "student" or "ta"
     enrolled_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

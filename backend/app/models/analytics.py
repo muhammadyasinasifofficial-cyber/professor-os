@@ -16,7 +16,7 @@ class AnalyticsSnapshot(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), nullable=False, index=True)
     assignment_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("assignments.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("assignments.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
     # ── Computed statistics ───────────────────────────
@@ -48,7 +48,7 @@ class AtRiskRecord(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), nullable=False, index=True)
-    student_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    student_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     reason: Mapped[str] = mapped_column(String(100), nullable=False)  # e.g., "Low Participation", "Inactive 7 Days"
     average_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     last_submission: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

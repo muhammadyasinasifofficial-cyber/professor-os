@@ -47,7 +47,7 @@ class CourseCreate(BaseModel):
     code: str = Field(..., min_length=1, max_length=20)
     semester: str = Field(..., min_length=1, max_length=50)
     description: Optional[str] = Field(None, max_length=1000)
-    professor_id: int = Field(..., description="ID of the professor to assign this course to")
+    professor_id: Optional[int] = Field(None, description="ID of the professor to assign this course to")
     at_risk_threshold: float = Field(default=40.0, ge=0, le=100)
     quiz_weight: int = Field(default=20, ge=0, le=100)
     assignment_weight: int = Field(default=20, ge=0, le=100)

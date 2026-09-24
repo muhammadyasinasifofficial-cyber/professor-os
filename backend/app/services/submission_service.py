@@ -81,6 +81,12 @@ class SubmissionService:
         SUBMISSIONS_DIR.mkdir(parents=True, exist_ok=True)
         original_name = Path(filename or "submission.bin").name
         safe_name_part = re.sub(r"[^A-Za-z0-9_.-]", "_", original_name) or "submission.bin"
+        
+        # Block dangerous executable files
+        ext = Path(safe_name_part).suffix.lower()
+        if ext in {".exe", ".bat", ".cmd", ".sh", ".bash", ".msi", ".dll", ".scr", ".vbs", ".ps1", ".com", ".pyw"}:
+            raise ValueError(f"File extension '{ext}' is prohibited for security reasons.")
+            
         safe_name = f"{assignment_id}_{student_id}_{safe_name_part}"
         file_path = SUBMISSIONS_DIR / safe_name
         file_path.write_bytes(file_bytes)

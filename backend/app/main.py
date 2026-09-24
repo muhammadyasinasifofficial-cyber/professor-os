@@ -58,6 +58,17 @@ async def lifespan(app: FastAPI):
                 await conn.execute(text("UPDATE users SET is_approved = TRUE WHERE is_approved IS NULL"))
         except Exception as e:
             print(f"[STARTUP WARN] Auto-migration for is_approved failed: {e}")
+
+        # Auto-migration for token_valid_after column
+        try:
+            from sqlalchemy import text
+            res = await conn.execute(
+                text("SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name='token_valid_after'")
+            )
+            if not res.fetchone():
+                await conn.execute(text("ALTER TABLE users ADD COLUMN token_valid_after TIMESTAMP WITH TIME ZONE NULL"))
+        except Exception as e:
+            print(f"[STARTUP WARN] Auto-migration for token_valid_after failed: {e}")
             
     # Auto-seed admin account and migrate legacy accounts to professor role
     try:
@@ -71,17 +82,20 @@ async def lifespan(app: FastAPI):
             res_admin = await session.execute(
                 select(User).where(User.email == "admin@professoros.edu.pk")
             )
-            if not res_admin.scalar_one_or_none():
+            existing_admin = res_admin.scalar_one_or_none()
+            if not existing_admin and get_settings().INITIAL_ADMIN_PASSWORD:
                 admin_acc = User(
                     email="admin@professoros.edu.pk",
                     full_name="System Administrator",
-                    hashed_password=hash_password("admin123"),
+                    hashed_password=hash_password(get_settings().INITIAL_ADMIN_PASSWORD),
                     role=UserRole.ADMIN,
                     is_active=True,
                     is_verified=True,
                     is_approved=True,
                 )
                 session.add(admin_acc)
+            elif not existing_admin:
+                print("[STARTUP WARN] Admin account is absent; set INITIAL_ADMIN_PASSWORD to bootstrap it securely.")
 
             # Update all existing accounts with role ADMIN (except system admin) to PROFESSOR
             res_legacy = await session.execute(
@@ -118,6 +132,7 @@ _origins = [o.strip() for o in _settings.ALLOWED_ORIGINS.split(",")]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins,
+    allow_origin_regex=r"^https://.*\.up\.railway\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -156,14 +171,38 @@ if STATIC_DIR.exists():
     @app.get("/{full_path:path}")
     async def serve_flutter(full_path: str):
         """Serve Flutter web app for all non-API routes with cache-busting headers."""
-        file_path = STATIC_DIR / full_path
+        # Block directory traversal and dotfiles (.env, .git, etc.)
+        if (
+            ".." in full_path
+            or full_path.startswith("/")
+            or full_path.startswith("\\")
+            or any(part.startswith(".") for part in full_path.split("/") if part)
+        ):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=403, detail="Access denied.")
         headers = {
             "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
             "Pragma": "no-cache",
             "Expires": "0",
         }
+        resolved_static = STATIC_DIR.resolve()
+        try:
+            file_path = (STATIC_DIR / full_path).resolve()
+            if not file_path.is_relative_to(resolved_static):
+                from fastapi import HTTPException
+                raise HTTPException(status_code=403, detail="Access denied.")
+        except (ValueError, RuntimeError):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=403, detail="Access denied.")
+
         if file_path.is_file():
             return FileResponse(str(file_path), headers=headers)
+
+        # Do not return index.html for missing file/asset requests with an extension
+        if file_path.suffix:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="Resource not found.")
+
         # Fallback to index.html for Flutter router
         return FileResponse(str(STATIC_DIR / "index.html"), headers=headers)
 else:

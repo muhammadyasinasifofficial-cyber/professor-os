@@ -180,8 +180,12 @@ async def export_analytics_pdf(
     if not snapshot:
         snapshot = await analytics_svc.compute_analytics_from_db(course_id)
 
+    import html as html_lib
     at_risk_records = await analytics_svc.get_at_risk_students(course_id)
     hec_grade, hec_label = compute_hec_grade(snapshot.mean)
+    c_title = html_lib.escape(course.title or "")
+    c_code = html_lib.escape(course.code or "")
+    c_semester = html_lib.escape(course.semester or "")
 
     html_content = f"""<!DOCTYPE html>
 <html>
@@ -297,7 +301,7 @@ async def export_analytics_pdf(
 <body>
     <div class="header">
         <h1>HEC Cohort Analytics & Compliance Report</h1>
-        <h2>Course: {course.code} – {course.title} ({course.semester})</h2>
+        <h2>Course: {c_code} – {c_title} ({c_semester})</h2>
     </div>
     
     <div class="meta-grid">
@@ -389,14 +393,15 @@ async def export_analytics_pdf(
             </tr>"""
     else:
         for r in at_risk_records:
-            s_name = r.student.full_name if r.student else "Student #2"
-            s_email = r.student.email if r.student else "student2@univ.edu.pk"
+            s_name = html_lib.escape(r.student.full_name if r.student else "Student #2")
+            s_email = html_lib.escape(r.student.email if r.student else "student2@univ.edu.pk")
+            r_reason = html_lib.escape(r.reason or "")
             html_content += f"""
                 <tr>
                     <td>{s_name}</td>
                     <td>{s_email}</td>
                     <td>{r.average_score}%</td>
-                    <td><span class="badge badge-danger">{r.reason}</span></td>
+                    <td><span class="badge badge-danger">{r_reason}</span></td>
                 </tr>"""
     html_content += """
             </tbody>

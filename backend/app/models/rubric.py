@@ -22,7 +22,7 @@ class Rubric(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     assignment_id: Mapped[int] = mapped_column(
-        ForeignKey("assignments.id", ondelete="CASCADE"), nullable=False, unique=True
+        ForeignKey("assignments.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
     )
 
     # ── Relationships ─────────────────────────────────
@@ -41,7 +41,7 @@ class RubricCriterion(Base):
     __tablename__ = "rubric_criteria"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    rubric_id: Mapped[int] = mapped_column(ForeignKey("rubrics.id", ondelete="CASCADE"), nullable=False)
+    rubric_id: Mapped[int] = mapped_column(ForeignKey("rubrics.id", ondelete="CASCADE"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     weight: Mapped[float] = mapped_column(Float, nullable=False)  # Must sum to 100 across all criteria
     order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -61,7 +61,7 @@ class RubricLevel(Base):
     __tablename__ = "rubric_levels"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    criterion_id: Mapped[int] = mapped_column(ForeignKey("rubric_criteria.id", ondelete="CASCADE"), nullable=False)
+    criterion_id: Mapped[int] = mapped_column(ForeignKey("rubric_criteria.id", ondelete="CASCADE"), nullable=False, index=True)
     level: Mapped[str] = mapped_column(
         Enum(LevelName, name="level_name", values_callable=lambda e: [m.value for m in e]),
         nullable=False,

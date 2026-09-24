@@ -39,6 +39,16 @@ async def get_current_user(
             detail="Invalid or expired access token.",
         )
 
+    # Check token blacklist (e.g. from logout)
+    jti = payload.get("jti")
+    if jti:
+        from app.services.cache_service import is_token_blacklisted
+        if await is_token_blacklisted(jti):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked.",
+            )
+
     user_id = int(payload["sub"])
     user = await db.get(User, user_id)
     if user is None:
@@ -51,6 +61,23 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account has been suspended.",
         )
+
+    # Invalidate tokens issued prior to a session revocation event
+    token_valid_after = getattr(user, "token_valid_after", None)
+    if token_valid_after and payload.get("iat"):
+        from datetime import datetime, timezone
+        raw_iat = payload["iat"]
+        iat_dt = (
+            datetime.fromtimestamp(raw_iat, tz=timezone.utc)
+            if isinstance(raw_iat, (int, float))
+            else raw_iat
+        )
+        if iat_dt < token_valid_after:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session has been revoked. Please sign in again.",
+            )
+
     return user
 
 

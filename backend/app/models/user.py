@@ -40,6 +40,7 @@ class User(Base):
     # ── Security ──────────────────────────────────────
     failed_attempts: Mapped[int] = mapped_column(Integer, default=0)
     locked_until: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    token_valid_after: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # ── Timestamps ────────────────────────────────────
     created_at: Mapped[datetime] = mapped_column(

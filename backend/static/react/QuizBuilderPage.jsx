@@ -11,8 +11,8 @@ const BLOOM_COLORS = {
   C6: { bg: "bg-rose-100", text: "text-rose-700", border: "border-rose-300", bar: "bg-rose-500" },
 };
 
-export default function QuizBuilderPage({ courseId = 4, initialQuizId = "" }) {
-  const [quizId, setQuizId] = useState(initialQuizId || "8e3a7888-347a-4784-a1d0-71b2c5ec2f66");
+export default function QuizBuilderPage({ courseId, initialQuizId = "" }) {
+  const [quizId, setQuizId] = useState(initialQuizId);
   const [availableQuestions, setAvailableQuestions] = useState([]);
   const [selectedQuestions, setSelectedQuestions] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -51,12 +51,35 @@ async def cache_set(key: str, value: dict, ttl: int = CACHE_TTL) -> None:
         logger.warning(f"Redis cache_set error: {e}")
 
 
-async def cache_delete(key: str) -> None:
-    """Delete a cached value (silently fails if Redis unavailable)."""
+# In-memory blacklist fallback for development or when Redis is temporarily unavailable
+_token_blacklist_memory: set = set()
+
+
+async def blacklist_token(jti: str, ttl_seconds: int = 3600) -> None:
+    """Add a JWT jti to the blacklist for the duration of its remaining lifetime."""
+    if not jti:
+        return
+    _token_blacklist_memory.add(jti)
     try:
         r = await get_redis()
         if r is not None:
-            await r.delete(key)
+            await r.set(f"blacklist:{jti}", "1", ex=ttl_seconds)
     except Exception as e:
-        logger.warning(f"Redis cache_delete error: {e}")
+        logger.warning(f"Redis blacklist_token error: {e}")
+
+
+async def is_token_blacklisted(jti: str) -> bool:
+    """Check if a JWT jti has been invalidated."""
+    if not jti:
+        return False
+    if jti in _token_blacklist_memory:
+        return True
+    try:
+        r = await get_redis()
+        if r is not None:
+            val = await r.get(f"blacklist:{jti}")
+            return val is not None
+    except Exception as e:
+        logger.warning(f"Redis is_token_blacklisted error: {e}")
+    return False
 

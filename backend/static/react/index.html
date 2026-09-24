@@ -21,36 +21,16 @@
     const { useState, useEffect, useMemo } = React;
     const API_BASE = "/api/v1";
 
-    // ── Pre-configured Tokens for Instant Demo ──
+    // Reuse the authenticated Flutter session. No credentials are embedded here.
     const DEMO_PROF_TOKEN = localStorage.getItem("token") || "";
 
     function App() {
       const [activeTab, setActiveTab] = useState("builder");
-      const [courseId, setCourseId] = useState(4);
+      const [courseId, setCourseId] = useState(() => localStorage.getItem("obe_course_id") || "");
       const [token, setToken] = useState(DEMO_PROF_TOKEN);
-      const [loginLoading, setLoginLoading] = useState(false);
-
-      const autoLoginProfessor = async () => {
-        setLoginLoading(true);
-        try {
-          const res = await fetch(`${API_BASE}/auth/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: "dr.tariq@professoros.edu.pk", password: "professor123" }),
-          });
-          const data = await res.json();
-          if (res.ok && data.access_token) {
-            localStorage.setItem("token", data.access_token);
-            setToken(data.access_token);
-            alert("Authenticated as Dr. Tariq Mahmood (Professor role)!");
-          } else {
-            alert("Login failed: " + (data.detail || "Check backend status"));
-          }
-        } catch (e) {
-          alert("Could not reach backend on " + API_BASE);
-        } finally {
-          setLoginLoading(false);
-        }
+      const setCourse = (value) => {
+        setCourseId(value);
+        localStorage.setItem("obe_course_id", value);
       };
 
       return (
@@ -96,18 +76,20 @@
 
             {/* Quick Session Controls */}
             <div className="flex items-center gap-3">
-              <button
-                onClick={autoLoginProfessor}
-                disabled={loginLoading}
-                className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-medium transition-all"
-              >
-                {token ? "Token Active \u2713" : loginLoading ? "Connecting..." : "Auto-Login Faculty"}
-              </button>
+              <label className="text-xs text-slate-300 flex items-center gap-2">
+                Course ID
+                <input value={courseId} onChange={(e) => setCourse(e.target.value)} inputMode="numeric" placeholder="Enter ID"
+                  className="w-24 rounded bg-slate-800 border border-slate-600 px-2 py-1 text-white" />
+              </label>
+              <span className={`text-xs px-3 py-1.5 rounded-lg font-medium ${token ? "bg-emerald-600 text-white" : "bg-amber-600 text-white"}`}>
+                {token ? "Session active" : "Sign in through the main app first"}
+              </span>
             </div>
           </nav>
 
           {/* Tab Views */}
           <div className="flex-1">
+            {!courseId ? <div className="m-6 rounded-xl bg-amber-50 border border-amber-200 p-5 text-amber-900">Enter a real course ID to load OBE data.</div> : null}
             {activeTab === "builder" && <QuizBuilderView courseId={courseId} />}
             {activeTab === "bank" && <QuestionBankView courseId={courseId} />}
             {activeTab === "obe" && <OBEDashboardView courseId={courseId} />}
@@ -121,7 +103,7 @@
       return (
         <div className="p-4 max-w-7xl mx-auto">
           <iframe
-            src="/static_assets/react/question_bank.html"
+            src={`/static_assets/react/question_bank.html?courseId=${encodeURIComponent(courseId)}`}
             className="w-full h-[850px] border-0 rounded-xl shadow-sm"
           />
         </div>
@@ -133,7 +115,7 @@
       return (
         <div className="p-4 max-w-7xl mx-auto">
           <iframe
-            src="/static_assets/react/quiz_builder.html"
+            src={`/static_assets/react/quiz_builder.html?courseId=${encodeURIComponent(courseId)}`}
             className="w-full h-[880px] border-0 rounded-xl shadow-sm"
           />
         </div>
@@ -145,7 +127,7 @@
       return (
         <div className="p-4 max-w-7xl mx-auto">
           <iframe
-            src="/static_assets/react/obe_dashboard.html"
+            src={`/static_assets/react/obe_dashboard.html?courseId=${encodeURIComponent(courseId)}`}
             className="w-full h-[880px] border-0 rounded-xl shadow-sm"
           />
         </div>

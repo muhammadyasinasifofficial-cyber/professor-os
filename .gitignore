@@ -40,6 +40,8 @@ Thumbs.db
 .tmp/
 *.apk
 *.zip
+*.exe
+tools/*.exe
 fish-speech/
 fish-speech-main.zip
 _qa_*/

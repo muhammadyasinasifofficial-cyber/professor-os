@@ -4,7 +4,7 @@ import re
 import time
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -90,9 +90,20 @@ async def refresh(body: RefreshRequest, db: Annotated[AsyncSession, Depends(get_
 
 @router.post("/logout", response_model=MessageResponse)
 async def logout(
+    request: Request,
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    token = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.lower().startswith("bearer "):
+        token = auth_header.split(" ")[1]
+    if token:
+        from app.core.security import decode_token
+        payload = decode_token(token)
+        if payload and payload.get("jti"):
+            from app.services.cache_service import blacklist_token
+            await blacklist_token(payload["jti"], ttl_seconds=3600)
     svc = AuthService(db)
     await svc.revoke_all_sessions(user.id)
     return MessageResponse(message="Logged out successfully.")

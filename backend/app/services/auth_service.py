@@ -34,9 +34,9 @@ class AuthService:
 
     async def register(
         self, email: str, full_name: str, password: str, role: str = "student"
-    ) -> Tuple[User, None, bool]:
+    ) -> Tuple[User, Optional[str], bool]:
         """
-        Register a new user. Returns (user, verification_token).
+        Register a new user. Returns (user, verification_token, needs_approval).
         Raises ValueError if email already exists.
         """
         existing = await self.db.execute(
@@ -60,7 +60,13 @@ class AuthService:
         self.db.add(user)
         await self.db.flush()
 
-        return user, None, needs_approval
+        token: Optional[str] = None
+        if not flags["is_verified"]:
+            token = create_email_token(user.email, purpose="verify")
+            verify_url = f"{self.settings.BACKEND_URL}/auth/verify-email?token={token}"
+            await asyncio.to_thread(send_verification_email, user.email, user.full_name, verify_url)
+
+        return user, token, needs_approval
 
     async def login(self, email: str, password: str) -> Tuple[str, str]:
         """
@@ -193,12 +199,12 @@ class AuthService:
         return token
 
     async def revoke_all_sessions(self, user_id: int) -> None:
-        """Sign out from all devices. With JWT, we update the user so new tokens are needed."""
-        # In a production system, you'd maintain a token blacklist in Redis.
-        # For now, we just acknowledge the request.
+        """Sign out from all devices by invalidating all tokens issued prior to now."""
         user = await self.db.get(User, user_id)
         if user:
-            user.updated_at = datetime.now(timezone.utc)
+            now = datetime.now(timezone.utc)
+            user.updated_at = now
+            user.token_valid_after = now
             await self.db.flush()
 
     # ── Private helpers ───────────────────────────────
