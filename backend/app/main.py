@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
@@ -137,6 +138,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # ── Register routers ─────────────────────────────────
 from app.api.v1.auth import router as auth_router
@@ -180,11 +182,6 @@ if STATIC_DIR.exists():
         ):
             from fastapi import HTTPException
             raise HTTPException(status_code=403, detail="Access denied.")
-        headers = {
-            "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
-            "Pragma": "no-cache",
-            "Expires": "0",
-        }
         resolved_static = STATIC_DIR.resolve()
         try:
             file_path = (STATIC_DIR / full_path).resolve()
@@ -194,6 +191,21 @@ if STATIC_DIR.exists():
         except (ValueError, RuntimeError):
             from fastapi import HTTPException
             raise HTTPException(status_code=403, detail="Access denied.")
+
+        # Cache static bundle assets (JS, WASM, fonts, images) for high navigation performance
+        is_immutable = file_path.suffix.lower() in {
+            ".js", ".wasm", ".png", ".jpg", ".jpeg", ".svg", ".ttf", ".woff", ".woff2", ".css", ".ico"
+        }
+        if is_immutable:
+            headers = {
+                "Cache-Control": "public, max-age=604800, stale-while-revalidate=86400",
+            }
+        else:
+            headers = {
+                "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            }
 
         if file_path.is_file():
             return FileResponse(str(file_path), headers=headers)

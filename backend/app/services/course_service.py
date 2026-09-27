@@ -98,13 +98,7 @@ class CourseService:
             return course
         
         # Students can view only if enrolled
-        enrollment_result = await self.db.execute(
-            select(Enrollment).where(
-                Enrollment.course_id == course_id,
-                Enrollment.user_id == user.id
-            )
-        )
-        if not enrollment_result.scalar_one_or_none():
+        if not any(e.user_id == user.id for e in course.enrollments):
             raise PermissionError("No permission to view this course.")
         
         return course

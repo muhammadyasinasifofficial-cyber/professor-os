@@ -19,6 +19,7 @@ import '../providers/course_providers.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/network/api_constants.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'ai_quiz_obe_dialog.dart';
 
 class CourseDetailScreen extends ConsumerStatefulWidget {
@@ -1501,7 +1502,7 @@ class _CourseAiChatDialogState extends State<CourseAiChatDialog> {
                 const Icon(Icons.psychology, size: 16, color: AppColors.signal),
                 const SizedBox(width: 6),
                 Text('AI Assistant',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.dmSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: AppColors.signal)),
@@ -1513,13 +1514,64 @@ class _CourseAiChatDialogState extends State<CourseAiChatDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            SelectableText(
-              msg.text,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: AppColors.inkPrimary,
-                height: 1.5,
+            MarkdownBody(
+              data: msg.text,
+              selectable: true,
+              styleSheet: MarkdownStyleSheet(
+                p: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  color: AppColors.inkPrimary,
+                  height: 1.55,
+                ),
+                h1: GoogleFonts.fraunces(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.inkPrimary,
+                  height: 1.3,
+                ),
+                h2: GoogleFonts.fraunces(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.inkPrimary,
+                  height: 1.3,
+                ),
+                h3: GoogleFonts.fraunces(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.inkPrimary,
+                  height: 1.3,
+                ),
+                strong: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.inkPrimary,
+                ),
+                em: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  fontStyle: FontStyle.italic,
+                  color: AppColors.inkPrimary,
+                ),
+                code: GoogleFonts.jetBrainsMono(
+                  fontSize: 12.5,
+                  color: AppColors.signal,
+                  backgroundColor: AppColors.surfaceMid,
+                ),
+                codeblockPadding: const EdgeInsets.all(12),
+                codeblockDecoration: BoxDecoration(
+                  color: AppColors.surfaceMid,
+                  borderRadius: BorderRadius.circular(AppRadius.r4),
+                  border: Border.all(color: AppColors.rule, width: 1),
+                ),
+                horizontalRuleDecoration: const BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: AppColors.rule, width: 1),
+                  ),
+                ),
+                listBullet: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  color: AppColors.inkPrimary,
+                ),
+                blockSpacing: 10,
               ),
             ),
             // RAG Sources Citations
