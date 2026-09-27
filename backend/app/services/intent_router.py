@@ -91,7 +91,12 @@ class LocalIntentRouter:
         self._precompute_exemplar_embeddings()
 
     def _load_model(self):
-        """Loads SentenceTransformer with fallback handling."""
+        """Loads SentenceTransformer only if explicitly enabled; defaults to high-speed zero-latency heuristic."""
+        import os
+        if os.environ.get("ENABLE_PYTORCH_INTENT_ROUTER", "false").lower() != "true":
+            logger.debug("Using ultra-fast zero-latency intent heuristic (PyTorch bypassed for web responsiveness).")
+            return None
+
         global _model_instance
         if _model_instance is not None:
             return _model_instance

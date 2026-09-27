@@ -8,22 +8,32 @@ import redis.asyncio as redis
 
 from app.core.config import get_settings
 
+import time
+
 logger = logging.getLogger(__name__)
 _redis_client: Optional[redis.Redis] = None
+_redis_offline_until: float = 0.0
 CACHE_TTL = 300  # 5 minutes
 
 
 async def get_redis() -> Optional[redis.Redis]:
-    """Get or create the Redis client singleton."""
-    global _redis_client
+    """Get or create the Redis client singleton with circuit breaker."""
+    global _redis_client, _redis_offline_until
+    if time.time() < _redis_offline_until:
+        return None
+
     if _redis_client is None:
         settings = get_settings()
-        _redis_client = redis.from_url(
-            settings.REDIS_URL,
-            decode_responses=True,
-            socket_timeout=0.2,
-            socket_connect_timeout=0.2,
-        )
+        try:
+            _redis_client = redis.from_url(
+                settings.REDIS_URL,
+                decode_responses=True,
+                socket_timeout=0.2,
+                socket_connect_timeout=0.2,
+            )
+        except Exception:
+            _redis_offline_until = time.time() + 15
+            return None
     return _redis_client
 
 
@@ -80,6 +90,8 @@ async def is_token_blacklisted(jti: str) -> bool:
             val = await r.get(f"blacklist:{jti}")
             return val is not None
     except Exception as e:
+        global _redis_offline_until
+        _redis_offline_until = time.time() + 15
         logger.warning(f"Redis is_token_blacklisted error: {e}")
     return False
 

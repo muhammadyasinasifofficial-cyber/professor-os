@@ -79,17 +79,31 @@ class DoclingPipeline:
         self._embedding_model = None
 
     def _get_embedding_model(self):
-        """Lazy-loads SentenceTransformer model singleton with robust local fallback."""
+        """Loads dense semantic encoder; defaults to high-speed zero-latency HashingVectorizer."""
         global _SHARED_EMBEDDING_MODEL
         if self._embedding_model is None and _SHARED_EMBEDDING_MODEL is not None:
             self._embedding_model = _SHARED_EMBEDDING_MODEL
         if self._embedding_model is None:
+            import os
+            # On cloud web instances (Railway), bypass heavy 500MB PyTorch model download
+            if os.environ.get("ENABLE_PYTORCH_EMBEDDINGS", "false").lower() != "true":
+                from sklearn.feature_extraction.text import HashingVectorizer
+                vectorizer = HashingVectorizer(n_features=384, alternate_sign=False, norm="l2")
+
+                class SimpleEncoder:
+                    def encode(self, texts, normalize_embeddings=True, show_progress_bar=False):
+                        mat = vectorizer.transform(texts)
+                        return mat.toarray().astype(np.float32)
+
+                self._embedding_model = SimpleEncoder()
+                _SHARED_EMBEDDING_MODEL = self._embedding_model
+                return self._embedding_model
+
             try:
                 from sentence_transformers import SentenceTransformer
                 logger.info("Initializing SentenceTransformer '%s' for FAISS indexing...", settings.EMBEDDING_MODEL_NAME)
                 self._embedding_model = SentenceTransformer(settings.EMBEDDING_MODEL_NAME)
-            except ImportError:
-                logger.info("Using local 384-dimensional dense semantic encoder (SentenceTransformer fallback)...")
+            except Exception:
                 from sklearn.feature_extraction.text import HashingVectorizer
                 vectorizer = HashingVectorizer(n_features=384, alternate_sign=False, norm="l2")
 
