@@ -49,7 +49,6 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
   bool _examStarted = false;
   bool _submitted = false;
   bool _submitting = false;
-  Map<String, dynamic>? _examResult;
   String? _error;
 
   // Timer

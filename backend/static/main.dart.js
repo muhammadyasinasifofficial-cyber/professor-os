@@ -33129,14 +33129,14 @@ _.y=f
 _.a=g},
 Mw:function Mw(a,b,c,d){var _=this
 _.z=_.y=_.x=_.w=!1
-_.at=_.as=null
-_.ay=_.ax=0
-_.CW=_.ch=!1
-_.cx=a
-_.cy=b
-_.dy=_.dx=_.db=null
-_.fr=c
-_.fx=d
+_.as=_.Q=null
+_.ax=_.at=0
+_.ch=_.ay=!1
+_.CW=a
+_.cx=b
+_.dx=_.db=_.cy=null
+_.dy=c
+_.fr=d
 _.d=$
 _.c=_.a=null},
 aN5:function aN5(a){this.a=a},
@@ -116572,13 +116572,13 @@ A.xf(B.Fg)
 this.q1()},
 m(){var s,r,q=this
 $.ac.jh(q)
-s=q.at
+s=q.as
 if(s!=null)s.aM(0)
-s=q.cx
+s=q.CW
 r=$.af()
 s.J$=r
 s.M$=0
-s=q.cy
+s=q.cx
 s.J$=r
 s.M$=0
 A.xf(B.Fh)
@@ -116589,7 +116589,7 @@ s=p}while(true)switch(s){case 0:p=4
 s=7
 return A.o($.ae5().z_(),$async$q1)
 case 7:m=b
-j=n.fr
+j=n.dy
 s=8
 return A.o(j.ny(),$async$q1)
 case 8:l=b
@@ -116618,7 +116618,7 @@ var $async$E_=A.w(function(a,b){if(a===1){p=b
 s=q}while(true)switch(s){case 0:q=3
 k=o.a
 s=6
-return A.o(o.fx.BL(k.d,k.e),$async$E_)
+return A.o(o.fr.BL(k.d,k.e),$async$E_)
 case 6:n=b
 m=A.dP(J.U(n,"time_limit_minutes"))
 o.A(new A.aN9(o,m))
@@ -116637,7 +116637,7 @@ break
 case 5:return A.t(null,r)
 case 1:return A.r(p,r)}})
 return A.u($async$E_,r)},
-alm(){this.at=A.a0s(B.di,new A.aNc(this))},
+alm(){this.as=A.a0s(B.di,new A.aNc(this))},
 Ch(){var s=0,r=A.v(t.H),q,p=this
 var $async$Ch=A.w(function(a,b){if(a===1)return A.r(b,r)
 while(true)switch(s){case 0:if(p.y||p.z){s=1
@@ -116649,12 +116649,12 @@ uB(a){if(!this.x||this.y)return
 if(a===B.j1||a===B.hl||a===B.hk)this.xc()},
 xc(){var s=0,r=A.v(t.H),q,p=2,o,n=this,m,l,k,j
 var $async$xc=A.w(function(a,b){if(a===1){o=b
-s=p}while(true)switch(s){case 0:if(n.CW){s=1
+s=p}while(true)switch(s){case 0:if(n.ch){s=1
 break}n.A(new A.aMY(n))
 p=4
 l=n.a
 s=7
-return A.o(n.fx.Ga(l.d,l.e),$async$xc)
+return A.o(n.fr.Ga(l.d,l.e),$async$xc)
 case 7:m=b
 if(J.c(J.U(m,"is_flagged"),!0))n.A(new A.aMZ(n))
 p=2
@@ -116681,7 +116681,7 @@ axt(a){var s=0,r=A.v(t.H),q,p=2,o,n=this,m,l,k,j,i,h,g,f,e,d
 var $async$n3=A.w(function(b,c){if(b===1){o=c
 s=p}while(true)switch(s){case 0:if(n.y||n.z){s=1
 break}n.A(new A.aNd(n))
-i=n.at
+i=n.as
 if(i!=null)i.aM(0)
 p=4
 i=n.a
@@ -116693,44 +116693,44 @@ case"mcq":s=11
 break
 default:s=12
 break}break
-case 9:h=n.dy
-s=h!=null&&n.dx!=null?13:14
+case 9:h=n.dx
+s=h!=null&&n.db!=null?13:14
 break
 case 13:g=i.d
 i=i.e
 h.toString
-f=n.dx
+f=n.db
 f.toString
 s=15
-return A.o(n.fx.wx(g,i,h,f),$async$n3)
+return A.o(n.fr.wx(g,i,h,f),$async$n3)
 case 15:case 14:s=8
 break
-case 10:m=B.c.by(n.cy.a.a)
+case 10:m=B.c.by(n.cx.a.a)
 s=J.b6(m)!==0?16:17
 break
 case 16:i=n.a
 s=18
-return A.o(n.fx.mM(i.d,i.e,A.al(["submission_type","programming","content",m],t.N,t.z)),$async$n3)
+return A.o(n.fr.mM(i.d,i.e,A.al(["submission_type","programming","content",m],t.N,t.z)),$async$n3)
 case 18:case 17:s=8
 break
-case 11:i=n.db
+case 11:i=n.cy
 s=i!=null?19:20
 break
 case 19:l=["A","B","C","D","E"][B.j.eW(i-1,0,4)]
 i=n.a
 s=21
-return A.o(n.fx.mM(i.d,i.e,A.al(["submission_type","mcq","content","Option "+A.m(l)],t.N,t.z)),$async$n3)
+return A.o(n.fr.mM(i.d,i.e,A.al(["submission_type","mcq","content","Option "+A.m(l)],t.N,t.z)),$async$n3)
 case 21:case 20:s=8
 break
-case 12:k=B.c.by(n.cx.a.a)
+case 12:k=B.c.by(n.CW.a.a)
 s=J.b6(k)!==0?22:23
 break
 case 22:i=n.a
 s=24
-return A.o(n.fx.mM(i.d,i.e,A.al(["submission_type","text","content",k],t.N,t.z)),$async$n3)
+return A.o(n.fr.mM(i.d,i.e,A.al(["submission_type","text","content",k],t.N,t.z)),$async$n3)
 case 24:case 23:case 8:i=n.a
 s=25
-return A.o(n.fx.BO(i.d,i.e),$async$n3)
+return A.o(n.fr.BO(i.d,i.e),$async$n3)
 case 25:if(n.c!=null)n.A(new A.aNe(n))
 p=2
 s=6
@@ -116750,18 +116750,18 @@ case 2:return A.r(o,r)}})
 return A.u($async$n3,r)},
 gaxZ(){var s,r,q
 if(this.a.y==null)return""
-s=this.ax
+s=this.at
 r=B.j.cp(s,60)
 q=B.j.b6(s,60)
 return B.c.hp(B.j.k(r),2,"0")+":"+B.c.hp(B.j.k(q),2,"0")},
-gEb(){var s=this.ax
+gEb(){var s=this.at
 if(s>300)return B.E
 if(s>60)return B.aq
 return B.bz},
 E(a){var s,r,q,p,o,n,m,l,k,j=this,i=null
 if(!j.w){s=t.p
 r=A.a([B.S5,B.a_,A.i("Identity Verification Required",i,i,i,i,A.bn().$2$fontSize$fontWeight(22,B.F),i,i),B.a4,A.i("Please verify your identity using biometrics or device PIN to start the exam.",i,i,i,i,A.a_().$1$color(B.o),B.av,i)],s)
-q=j.as
+q=j.Q
 if(q!=null)B.b.H(r,A.a([B.S,A.i(q,i,i,i,i,B.FD,i,i)],s))
 r.push(B.a_)
 r.push(A.n_(B.S9,B.a9I,j.gavF(),A.cW(i,i,B.f,i,i,i,i,i,i,B.r,i,B.F2,i,i,i,i,i,i,i)))
@@ -116777,10 +116777,10 @@ m=j.xe(B.n3,"Your identity has been verified. Do not share your device.")
 l=A.cW(i,i,B.f,i,i,i,i,i,i,B.r,i,B.a2E,i,i,new A.bG(A.a6(12),B.t),i,i,i,i)
 return A.e1(s,B.T,A.bT(new A.dd(B.HQ,new A.ae(B.fu,A.a2(A.a([r,B.S,q,p,o,n,m,B.ci,A.bJ(A.dz(!1,A.i("Start Exam",i,i,i,i,A.bn().$2$fontSize$fontWeight(16,B.l),i,i),i,i,B.J,i,i,i,i,j.gaxg(),i,l),i,1/0)],t.p),B.u,B.e,B.Z),i),i),i,i),i,i)}if(j.y){s=t.p
 r=A.a([B.Qu,B.a_,A.i("Exam Submitted!",i,i,i,i,A.bn().$2$fontSize$fontWeight(26,B.F),i,i),B.a4,A.i("Your answers have been recorded successfully. Your instructor will grade them shortly.",i,i,i,i,A.a_().$2$color$height(B.o,1.5),B.av,i)],s)
-if(j.ch){q=A.y(B.d.V(25.5),255,152,0)
+if(j.ay){q=A.y(B.d.V(25.5),255,152,0)
 p=A.a6(10)
 o=A.b2(A.y(102,255,152,0),B.n,1)
-B.b.H(r,A.a([B.S,A.a7(i,A.ad(A.a([B.tV,B.ax,A.aA(A.i("Note: Your attempt was flagged due to "+j.ay+" app switches. Your instructor has been notified.",i,i,i,i,A.a_().$2$color$fontSize(B.mj,13),i,i),1)],s),B.k,B.e,B.h,i),B.i,i,i,new A.aa(q,i,o,p,i,i,B.p),i,i,i,i,B.bL,i,i,i)],s))}r.push(B.ci)
+B.b.H(r,A.a([B.S,A.a7(i,A.ad(A.a([B.tV,B.ax,A.aA(A.i("Note: Your attempt was flagged due to "+j.ax+" app switches. Your instructor has been notified.",i,i,i,i,A.a_().$2$color$fontSize(B.mj,13),i,i),1)],s),B.k,B.e,B.h,i),B.i,i,i,new A.aa(q,i,o,p,i,i,B.p),i,i,i,i,B.bL,i,i,i)],s))}r.push(B.ci)
 r.push(A.dz(!1,B.aa1,i,i,B.J,i,i,i,i,new A.aNk(a),i,A.cW(i,i,B.f,i,i,i,i,i,i,B.r,i,B.F2,i,i,i,i,i,i,i)))
 return A.e1(i,B.T,A.bT(new A.ae(B.fu,A.a2(r,B.k,B.e,B.Z),i),i,i),i,i)}s=A.i(j.a.f,i,i,i,i,A.bn().$1$fontWeight(B.l),i,i)
 r=t.p
@@ -116790,15 +116790,15 @@ p=A.y(31,p.gl(p)>>>16&255,p.gl(p)>>>8&255,p.gl(p)&255)
 o=A.a6(8)
 n=j.gEb()
 n=A.b2(A.y(102,n.gl(n)>>>16&255,n.gl(n)>>>8&255,n.gl(n)&255),B.n,1)
-q.push(new A.ae(B.dP,A.bT(A.a7(i,A.ad(A.a([A.cR(B.tx,j.gEb(),i,16),B.ch,A.i(j.gaxZ(),i,i,i,i,A.cG().$3$color$fontSize$fontWeight(j.gEb(),16,B.F),i,i)],r),B.k,B.e,B.Z,i),B.i,i,i,new A.aa(p,i,n,o,i,i,B.p),i,i,i,i,B.Oh,i,i,i),i,i),i))}if(j.ch)q.push(B.ZS)
+q.push(new A.ae(B.dP,A.bT(A.a7(i,A.ad(A.a([A.cR(B.tx,j.gEb(),i,16),B.ch,A.i(j.gaxZ(),i,i,i,i,A.cG().$3$color$fontSize$fontWeight(j.gEb(),16,B.F),i,i)],r),B.k,B.e,B.Z,i),B.i,i,i,new A.aa(p,i,n,o,i,i,B.p),i,i,i,i,B.Oh,i,i,i),i,i),i))}if(j.ay)q.push(B.ZS)
 p=j.z
 o=p?i:new A.aNl(j)
 n=A.cW(i,i,B.E,i,i,i,i,i,i,B.r,i,i,i,i,i,i,i,i,i)
 q.push(new A.ae(B.hO,A.dz(!1,p?B.kY:B.a9S,i,i,B.J,i,i,i,i,o,i,n),i))
 s=A.fq(q,!1,i,i,i,i,i,s)
 q=A.a([],r)
-p=j.ay
-if(p>0){o=j.ch
+p=j.ax
+if(p>0){o=j.ay
 n=(o?B.bz:B.is).a
 n=A.y(20,n>>>16&255,n>>>8&255,n&255)
 m=A.a6(8)
@@ -116822,9 +116822,9 @@ switch(p.a.r){case"file":return p.ahN()
 case"programming":s=A.i("Your Code",o,o,o,o,A.bn().$2$fontSize$fontWeight(16,B.l),o,o)
 r=A.cG().$2$color$fontSize(B.f,13)
 q=A.cG().$2$color$fontSize(B.Q,13)
-return A.a2(A.a([s,B.bs,A.kA(!0,B.bk,!1,o,!0,B.v,o,A.lE(),p.cy,o,o,o,o,o,2,A.h4(o,new A.cK(4,A.a6(10),B.aN),o,o,o,o,o,o,!0,o,o,o,o,o,o,B.KX,!0,o,o,o,o,o,o,o,o,o,o,o,o,q,"// Write your code here...\n",o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o),B.B,!0,!1,!0,o,!1,o,B.bu,o,o,o,o,o,o,o,16,o,o,!1,"\u2022",o,o,o,o,o,!1,o,!1,o,!0,o,B.aV,o,o,B.bo,B.bh,o,o,o,o,o,o,r,B.L,o,B.ad,o,o,o,o)],t.p),B.u,B.e,B.h)
+return A.a2(A.a([s,B.bs,A.kA(!0,B.bk,!1,o,!0,B.v,o,A.lE(),p.cx,o,o,o,o,o,2,A.h4(o,new A.cK(4,A.a6(10),B.aN),o,o,o,o,o,o,!0,o,o,o,o,o,o,B.KX,!0,o,o,o,o,o,o,o,o,o,o,o,o,q,"// Write your code here...\n",o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o),B.B,!0,!1,!0,o,!1,o,B.bu,o,o,o,o,o,o,o,16,o,o,!1,"\u2022",o,o,o,o,o,!1,o,!1,o,!0,o,B.aV,o,o,B.bo,B.bh,o,o,o,o,o,o,r,B.L,o,B.ad,o,o,o,o)],t.p),B.u,B.e,B.h)
 case"mcq":return p.ahW()
-default:return A.a2(A.a([A.i("Your Answer",o,o,o,o,A.bn().$2$fontSize$fontWeight(16,B.l),o,o),B.bs,A.kA(!0,B.bk,!1,o,!0,B.v,o,A.lE(),p.cx,o,o,o,o,o,2,A.h4(o,new A.cK(4,A.a6(10),B.aN),o,o,o,o,o,o,!0,o,o,o,o,o,o,B.W,!0,o,o,o,o,o,o,o,o,o,o,o,o,o,"Write your answer here...",o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o),B.B,!0,!1,!0,o,!1,o,B.bu,o,o,o,o,o,o,o,12,o,o,!1,"\u2022",o,o,o,o,o,!1,o,!1,o,!0,o,B.aV,o,o,B.bo,B.bh,o,o,o,o,o,o,A.a_().$2$fontSize$height(14,1.6),B.L,o,B.ad,o,o,o,o)],t.p),B.u,B.e,B.h)}},
+default:return A.a2(A.a([A.i("Your Answer",o,o,o,o,A.bn().$2$fontSize$fontWeight(16,B.l),o,o),B.bs,A.kA(!0,B.bk,!1,o,!0,B.v,o,A.lE(),p.CW,o,o,o,o,o,2,A.h4(o,new A.cK(4,A.a6(10),B.aN),o,o,o,o,o,o,!0,o,o,o,o,o,o,B.W,!0,o,o,o,o,o,o,o,o,o,o,o,o,o,"Write your answer here...",o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o,o),B.B,!0,!1,!0,o,!1,o,B.bu,o,o,o,o,o,o,o,12,o,o,!1,"\u2022",o,o,o,o,o,!1,o,!1,o,!0,o,B.aV,o,o,B.bo,B.bh,o,o,o,o,o,o,A.a_().$2$fontSize$height(14,1.6),B.L,o,B.ad,o,o,o,o)],t.p),B.u,B.e,B.h)}},
 ahW(){var s,r,q,p,o,n,m,l,k,j,i,h=null,g=this.a.w
 if(g==null)g=""
 s=A.bgB(g)
@@ -116846,7 +116846,7 @@ else m.push(j)}if(l.length===0)B.b.H(l,A.a(["A) Option A","B) Option B","C) Opti
 return this.Zn(l)},
 Zn(a){var s=null,r=A.i("Select Your Answer",s,s,s,s,A.bn().$2$fontSize$fontWeight(16,B.l),s,s),q=A.a6(12),p=A.b2(B.N,B.n,1)
 return A.a2(A.a([r,B.a4,A.a7(s,A.pd(new A.aN3(this,a),a.length,s,B.eJ,new A.aN4(),!0),B.i,s,s,new A.aa(B.W,s,p,q,s,s,B.p),s,s,s,s,s,s,s,s)],t.p),B.u,B.e,B.h)},
-ahN(){var s,r=null,q=A.i("Upload Your File",r,r,r,r,A.bn().$2$fontSize$fontWeight(16,B.l),r,r),p=A.i("Allowed: PDF, ZIP, DOCX, TXT \u2022 Max: 25 MB",r,r,r,r,A.a_().$2$color$fontSize(B.Q,12),r,r),o=A.a6(12),n=A.b2(A.y(B.d.V(76.5),234,232,227),B.n,1),m=this.dx,l=m==null,k=!l,j=A.cR(k?B.tJ:B.n5,B.f,r,40)
+ahN(){var s,r=null,q=A.i("Upload Your File",r,r,r,r,A.bn().$2$fontSize$fontWeight(16,B.l),r,r),p=A.i("Allowed: PDF, ZIP, DOCX, TXT \u2022 Max: 25 MB",r,r,r,r,A.a_().$2$color$fontSize(B.Q,12),r,r),o=A.a6(12),n=A.b2(A.y(B.d.V(76.5),234,232,227),B.n,1),m=this.db,l=m==null,k=!l,j=A.cR(k?B.tJ:B.n5,B.f,r,40)
 if(l)m="Click to choose file"
 l=k?B.l:B.y
 s=t.p
@@ -116872,7 +116872,7 @@ A.aN6.prototype={
 $0(){return this.a.w=this.b},
 $S:0}
 A.aN7.prototype={
-$0(){return this.a.as="Identity verification failed. Please try again."},
+$0(){return this.a.Q="Identity verification failed. Please try again."},
 $S:0}
 A.aN8.prototype={
 $0(){return this.a.w=!0},
@@ -116881,30 +116881,30 @@ A.aN9.prototype={
 $0(){var s,r=this.a
 r.x=!0
 s=this.b
-r.ax=(s==null?0:s)*60},
+r.at=(s==null?0:s)*60},
 $S:0}
 A.aNa.prototype={
-$0(){return this.a.as=A.ci(this.b)},
+$0(){return this.a.Q=A.ci(this.b)},
 $S:0}
 A.aNc.prototype={
 $1(a){var s=this.a
 if(s.c==null){a.aM(0)
-return}if(s.ax<=1){a.aM(0)
+return}if(s.at<=1){a.aM(0)
 s.Ch()}else s.A(new A.aNb(s))},
 $S:88}
 A.aNb.prototype={
-$0(){return this.a.ax--},
+$0(){return this.a.at--},
 $S:0}
 A.aMY.prototype={
-$0(){var s=this.a;++s.ay
-s.CW=!0},
+$0(){var s=this.a;++s.ax
+s.ch=!0},
 $S:0}
 A.aMZ.prototype={
-$0(){return this.a.ch=!0},
+$0(){return this.a.ay=!0},
 $S:0}
 A.aN_.prototype={
-$1(a){var s,r,q=null,p=t.p,o=A.ad(A.a([B.R0,B.ax,A.i("Warning",q,q,q,q,A.bn().$1$fontWeight(B.F),q,q)],p),B.k,B.e,B.h,q),n=this.a,m=A.a([A.i("You left the exam screen.",q,q,q,q,A.a_().$1$fontWeight(B.l),q,q),B.a7,A.i("Tab switches detected: "+n.ay,q,q,q,q,A.a_().$1$color(B.o),q,q)],p)
-if(n.ay>=3){s=A.y(B.d.V(25.5),244,67,54)
+$1(a){var s,r,q=null,p=t.p,o=A.ad(A.a([B.R0,B.ax,A.i("Warning",q,q,q,q,A.bn().$1$fontWeight(B.F),q,q)],p),B.k,B.e,B.h,q),n=this.a,m=A.a([A.i("You left the exam screen.",q,q,q,q,A.a_().$1$fontWeight(B.l),q,q),B.a7,A.i("Tab switches detected: "+n.ax,q,q,q,q,A.a_().$1$color(B.o),q,q)],p)
+if(n.ax>=3){s=A.y(B.d.V(25.5),244,67,54)
 r=A.a6(8)
 B.b.H(m,A.a([B.a7,A.a7(q,A.i("\u26a0\ufe0f Your attempt has been flagged for review by your instructor.",q,q,q,q,A.a_().$2$color$fontSize(B.bz,13),q,q),B.i,q,q,new A.aa(s,q,q,r,q,q,B.p),q,q,q,q,B.d_,q,q,q)],p))}m=A.a2(m,B.u,B.e,B.Z)
 return A.hH(A.a([A.dz(!1,B.a8W,q,q,B.J,q,q,q,q,new A.aMX(n),q,A.cW(q,q,B.f,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q,q))],p),B.W,m,o)},
@@ -116917,10 +116917,10 @@ s.A(new A.aMW(s))
 A.xf(B.Fg)},
 $S:0}
 A.aMW.prototype={
-$0(){return this.a.CW=!1},
+$0(){return this.a.ch=!1},
 $S:0}
 A.aN0.prototype={
-$0(){return this.a.CW=!1},
+$0(){return this.a.ch=!1},
 $S:0}
 A.aNd.prototype={
 $0(){return this.a.z=!0},
@@ -116976,14 +116976,14 @@ $2(a,b){return B.dh},
 $S:110}
 A.aN3.prototype={
 $2(a,b){var s=null,r=this.b[b],q=this.a
-return A.b5p(B.f,B.rF,q.db,new A.aN2(q),A.i(r,s,s,s,s,A.a_().$2$color$fontSize(B.f,14),s,s),b+1,t.S)},
+return A.b5p(B.f,B.rF,q.cy,new A.aN2(q),A.i(r,s,s,s,s,A.a_().$2$color$fontSize(B.f,14),s,s),b+1,t.S)},
 $S:809}
 A.aN2.prototype={
 $1(a){var s=this.a
 return s.A(new A.aN1(s,a))},
 $S:95}
 A.aN1.prototype={
-$0(){return this.a.db=this.b},
+$0(){return this.a.cy=this.b},
 $S:0}
 A.aMR.prototype={
 $0(){var s=0,r=A.v(t.H),q,p=this,o,n,m
@@ -117002,10 +117002,10 @@ return A.u($async$$0,r)},
 $S:2}
 A.aMQ.prototype={
 $0(){var s=this.a,r=this.b
-s.dx=r.b
+s.db=r.b
 r=r.c
 r.toString
-s.dy=B.as.dL(r)},
+s.dx=B.as.dL(r)},
 $S:0}
 A.aMV.prototype={
 $1(a){var s=null,r=A.i("Submit Exam?",s,s,s,s,A.bn().$1$fontWeight(B.F),s,s),q=this.a
