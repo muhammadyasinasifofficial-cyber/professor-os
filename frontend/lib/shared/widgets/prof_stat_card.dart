@@ -26,9 +26,8 @@ class ProfStatCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.r6),
         border: Border.all(color: AppColors.marginRule, width: 1),
-        boxShadow: AppShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,7 +42,7 @@ class ProfStatCard extends StatelessWidget {
           ),
           Text(
             label.toUpperCase(),
-            style: GoogleFonts.inter(
+            style: GoogleFonts.dmSans(
               fontSize: 11,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.05,

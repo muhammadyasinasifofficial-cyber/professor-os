@@ -75,16 +75,16 @@ class Settings(BaseSettings):
 
     # ── Pipeline 1: AI Grading (Deep Reasoning / Accuracy Critical) ─────
     MODEL_GRADING_PRIMARY: str = "deepseek-r1-distill-llama-70b"
-    MODEL_GRADING_FALLBACK: str = "deepseek/deepseek-r1-distill-llama-70b"
+    MODEL_GRADING_FALLBACK: str = "anthropic/claude-haiku-4.5"
     GRADING_MODEL_DEV: Optional[str] = None  # e.g. "llama-3.1-8b-instant" to save quota in development
 
     # ── Pipeline 2: RAG / AI Teaching Assistant (High Speed + Grounded) ─
     MODEL_RAG_PRIMARY: str = "llama-3.1-8b-instant"
-    MODEL_RAG_FALLBACK: str = "meta-llama/llama-3.1-8b-instruct"
+    MODEL_RAG_FALLBACK: str = "anthropic/claude-haiku-4.5"
 
     # ── Pipeline 3: Question Generation (Pedagogical Quality & Structure)
     MODEL_QUESTION_GEN_PRIMARY: str = "llama-3.3-70b-versatile"
-    MODEL_QUESTION_GEN_FALLBACK: str = "meta-llama/llama-3.3-70b-instruct"
+    MODEL_QUESTION_GEN_FALLBACK: str = "anthropic/claude-haiku-4.5"
 
     # ── Pipeline 4: Local Embeddings & Vector Storage ───────────────────
     EMBEDDING_MODEL_NAME: str = "all-MiniLM-L6-v2"

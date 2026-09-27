@@ -361,28 +361,21 @@ class _WizardState extends ConsumerState<AssignmentCreationWizard> {
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: selected
-              ? AppColors.primaryIndigo.withOpacity(0.06)
-              : AppColors.bgSurface,
+              ? AppColors.surface
+              : AppColors.canvas,
           border: Border.all(
-              color: selected ? AppColors.primaryIndigo : AppColors.border,
-              width: selected ? 2 : 1),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                      color: AppColors.primaryIndigo.withOpacity(0.12),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4))
-                ]
-              : [],
+              color: selected ? AppColors.ruleStrong : AppColors.marginRule,
+              width: selected ? 1.5 : 1),
+          borderRadius: BorderRadius.circular(AppRadius.r8),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: selected ? AppColors.primaryIndigo : AppColors.bgPage,
-                borderRadius: BorderRadius.circular(12),
+                color: selected ? AppColors.inkPrimary : AppColors.surface,
+                borderRadius: BorderRadius.circular(AppRadius.r6),
+                border: Border.all(color: AppColors.marginRule, width: 1),
               ),
               child: Icon(icon,
                   size: 24,

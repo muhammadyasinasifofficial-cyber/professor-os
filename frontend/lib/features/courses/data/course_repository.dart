@@ -303,6 +303,10 @@ class CourseRepository {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<void> deleteCourseMaterial(int courseId, String materialId) async {
+    await _dio.delete('/courses/$courseId/materials/$materialId');
+  }
+
   // ── AI Question Bank & OBE Attainment ──
 
   Future<List<Map<String, dynamic>>> getQuestionBank(int courseId, {String? status, String? bloomLevel}) async {

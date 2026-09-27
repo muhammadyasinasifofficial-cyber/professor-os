@@ -77,23 +77,23 @@ class LLMClient:
             LLMPipeline.GRADING: PipelineSpec(
                 pipeline=LLMPipeline.GRADING,
                 primary_model=grading_primary,
-                fallback_model=getattr(self.settings, "MODEL_GRADING_FALLBACK", "deepseek/deepseek-r1-distill-llama-70b"),
+                fallback_model=getattr(self.settings, "MODEL_GRADING_FALLBACK", "anthropic/claude-haiku-4.5"),
                 temperature=0.1,  # Low temperature for deterministic, rubric-faithful scoring
-                max_tokens=2048,
+                max_tokens=750,
             ),
             LLMPipeline.RAG: PipelineSpec(
                 pipeline=LLMPipeline.RAG,
-                primary_model=getattr(self.settings, "MODEL_RAG_PRIMARY", "llama-3.1-8b-instant"),
-                fallback_model=getattr(self.settings, "MODEL_RAG_FALLBACK", "meta-llama/llama-3.1-8b-instruct"),
+                primary_model=getattr(self.settings, "MODEL_RAG_PRIMARY", "qwen/qwen3.8-27b"),
+                fallback_model=getattr(self.settings, "MODEL_RAG_FALLBACK", "anthropic/claude-haiku-4.5"),
                 temperature=0.2,
-                max_tokens=1024,
+                max_tokens=750,
             ),
             LLMPipeline.QUESTION_GEN: PipelineSpec(
                 pipeline=LLMPipeline.QUESTION_GEN,
-                primary_model=getattr(self.settings, "MODEL_QUESTION_GEN_PRIMARY", "llama-3.3-70b-versatile"),
-                fallback_model=getattr(self.settings, "MODEL_QUESTION_GEN_FALLBACK", "meta-llama/llama-3.3-70b-instruct"),
+                primary_model=getattr(self.settings, "MODEL_QUESTION_GEN_PRIMARY", "qwen/qwen3.8-27b"),
+                fallback_model=getattr(self.settings, "MODEL_QUESTION_GEN_FALLBACK", "anthropic/claude-haiku-4.5"),
                 temperature=0.4,  # Moderate temperature for creative distractors while maintaining Bloom alignment
-                max_tokens=4096,
+                max_tokens=750,
             ),
         }
 
@@ -138,12 +138,16 @@ class LLMClient:
         max_tokens: int,
         json_mode: bool = False,
     ) -> Dict[str, Any]:
-        """Constructs the standard OpenAI-compliant completion request payload."""
+        # Guard against Groq 1,000 OTPM limits on qwen and dev tier models
+        safe_max_tokens = max_tokens
+        if "qwen" in model_name.lower() or "dev" in model_name.lower():
+            safe_max_tokens = min(safe_max_tokens, 750)
+
         payload: Dict[str, Any] = {
             "model": model_name,
             "messages": messages,
             "temperature": temperature,
-            "max_tokens": max_tokens,
+            "max_tokens": safe_max_tokens,
         }
         if json_mode:
             payload["response_format"] = {"type": "json_object"}

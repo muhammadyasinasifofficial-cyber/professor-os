@@ -77,12 +77,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
           child: FadeTransition(opacity: _fade, child: SlideTransition(position: _slide,
             child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 440),
               child: Container(
-                padding: const EdgeInsets.all(40),
+                padding: const EdgeInsets.all(36),
                 decoration: BoxDecoration(
-                  color: AppColors.bgCard,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: AppShadows.elevated,
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.r8),
+                  border: Border.all(color: AppColors.ruleStrong, width: 1),
                 ),
                 child: _done ? _buildSuccess() : _buildForm(),
               ),
@@ -95,31 +94,30 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
 
   Widget _buildSuccess() {
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 700),
-        curve: Curves.elasticOut,
-        builder: (_, v, c) => Transform.scale(scale: v, child: c),
-        child: Container(width: 72, height: 72,
-          decoration: BoxDecoration(gradient: AppGradients.primaryButton, shape: BoxShape.circle,
-            boxShadow: AppShadows.buttonGlow),
-          child: const Icon(Icons.send_rounded, color: Colors.white, size: 32)),
+      Container(
+        width: 64, height: 64,
+        decoration: BoxDecoration(
+          color: AppColors.canvas,
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.ruleStrong, width: 1),
+        ),
+        child: const Icon(Icons.send_outlined, color: AppColors.inkPrimary, size: 28),
       ),
       const SizedBox(height: 24),
-      Text('Email sent!', style: GoogleFonts.outfit(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+      Text('Instructions Dispatched', style: GoogleFonts.fraunces(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.inkPrimary)),
       const SizedBox(height: 10),
-      Text('If that email exists in our system,\nyou\'ll receive a reset link shortly.',
-        style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary, height: 1.6), textAlign: TextAlign.center),
+      Text('If an active academic account exists for that email,\nyou will receive a password reset link shortly.',
+        style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.inkSecondary, height: 1.5), textAlign: TextAlign.center),
       const SizedBox(height: 28),
       OutlinedButton(
         onPressed: () => context.go('/auth/login'),
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primaryIndigo,
-          side: const BorderSide(color: AppColors.primaryIndigo),
+          foregroundColor: AppColors.inkPrimary,
+          side: const BorderSide(color: AppColors.ruleStrong, width: 1),
           minimumSize: const Size(double.infinity, 48),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.r6)),
         ),
-        child: Text('Back to Sign In', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+        child: Text('Return to Sign In', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
       ),
     ]);
   }
@@ -132,74 +130,61 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
         child: GestureDetector(
           onTap: () => context.go('/auth/login'),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.arrow_back_rounded, size: 18, color: AppColors.textSecondary),
+            const Icon(Icons.arrow_back_rounded, size: 16, color: AppColors.inkSecondary),
             const SizedBox(width: 6),
-            Text('Back', style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary)),
+            Text('Back', style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.inkSecondary)),
           ]),
         ),
       ),
-      const SizedBox(height: 28),
+      const SizedBox(height: 24),
 
       // Icon
-      Container(width: 56, height: 56,
-        decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(16)),
-        child: const Icon(Icons.lock_reset_rounded, color: AppColors.primaryIndigo, size: 28)),
-      const SizedBox(height: 20),
+      Container(width: 52, height: 52,
+        decoration: BoxDecoration(
+          color: AppColors.canvas,
+          borderRadius: BorderRadius.circular(AppRadius.r6),
+          border: Border.all(color: AppColors.marginRule, width: 1),
+        ),
+        child: const Icon(Icons.lock_reset_rounded, color: AppColors.inkPrimary, size: 26)),
+      const SizedBox(height: 16),
 
-      Text('Reset your password', style: GoogleFonts.outfit(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -0.5)),
-      const SizedBox(height: 8),
-      Text("Enter your email and we'll send you a reset link.", style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary, height: 1.6)),
-      const SizedBox(height: 28),
+      Text('Reset Password', style: GoogleFonts.fraunces(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.inkPrimary, letterSpacing: -0.4)),
+      const SizedBox(height: 6),
+      Text("Enter your academic email to request a secure password recovery link.", style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.inkSecondary, height: 1.5)),
+      const SizedBox(height: 24),
 
       if (_error != null) Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: AppColors.dangerRose.withOpacity(0.06), borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.dangerRose.withOpacity(0.25))),
-        child: Text(_error!, style: GoogleFonts.inter(fontSize: 13, color: AppColors.dangerRose)),
+        decoration: BoxDecoration(
+          color: AppColors.statusCritical.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(AppRadius.r6),
+          border: Border.all(color: AppColors.statusCritical.withOpacity(0.3))),
+        child: Text(_error!, style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.statusCriticalInk)),
       ),
 
       TextFormField(
         controller: _emailCtrl,
         validator: Validators.email,
         keyboardType: TextInputType.emailAddress,
-        decoration: const InputDecoration(labelText: 'Email address', prefixIcon: Icon(Icons.alternate_email_rounded)),
+        decoration: const InputDecoration(labelText: 'Academic Email', prefixIcon: Icon(Icons.alternate_email_rounded)),
       ),
       const SizedBox(height: 24),
 
-      _GlowButton(label: 'Send Reset Link', loading: _loading, onPressed: _loading ? null : _submit),
+      ElevatedButton(
+        onPressed: _loading ? null : _submit,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.inkPrimary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          minimumSize: const Size(double.infinity, 50),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.r6)),
+          textStyle: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+        child: _loading
+            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            : const Text('Send Reset Link'),
+      ),
     ]));
   }
-}
-
-class _GlowButton extends StatefulWidget {
-  final String label; final bool loading; final VoidCallback? onPressed;
-  const _GlowButton({required this.label, required this.loading, this.onPressed});
-  @override State<_GlowButton> createState() => _GlowButtonState();
-}
-class _GlowButtonState extends State<_GlowButton> {
-  bool _hovered = false;
-  @override
-  Widget build(BuildContext context) => MouseRegion(
-    onEnter: (_) => setState(() => _hovered = true),
-    onExit:  (_) => setState(() => _hovered = false),
-    child: AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      decoration: BoxDecoration(gradient: AppGradients.primaryButton, borderRadius: BorderRadius.circular(12),
-        boxShadow: _hovered ? [const BoxShadow(color: Color(0x804F46E5), blurRadius: 28, offset: Offset(0, 8))]
-            : [const BoxShadow(color: Color(0x404F46E5), blurRadius: 16, offset: Offset(0, 4))]),
-      child: AnimatedScale(scale: _hovered ? 1.01 : 1.0, duration: const Duration(milliseconds: 150),
-        child: ElevatedButton(
-          onPressed: widget.onPressed,
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent,
-            foregroundColor: Colors.white, minimumSize: const Size(double.infinity, 52),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700)),
-          child: widget.loading
-              ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-              : Text(widget.label),
-        ),
-      ),
-    ),
-  );
 }

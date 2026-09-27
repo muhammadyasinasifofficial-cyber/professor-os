@@ -69,6 +69,9 @@ class AppColors {
   static const Color successGreen  = statusPassInk;
   static const Color dangerRose    = statusCriticalInk;
   static const Color accentAmber   = statusPendingInk;
+  static const Color statusCritical = statusCriticalInk;
+  static const Color statusPass     = statusPassInk;
+  static const Color statusPending  = statusPendingInk;
   static const Color accentCyan    = inkPrimary;
   static const Color accentPink    = inkPrimary;
 

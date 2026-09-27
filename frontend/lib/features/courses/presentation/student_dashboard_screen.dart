@@ -24,28 +24,46 @@ class StudentDashboardScreen extends ConsumerWidget {
     final user = ref.watch(authProvider).valueOrNull;
 
     return Scaffold(
-      backgroundColor: AppColors.bgPage,
+      backgroundColor: AppColors.canvas,
       appBar: AppBar(
+        backgroundColor: AppColors.canvas,
+        elevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Student Dashboard',
-                style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.3)),
-            Text('Your enrolled courses and progress',
-                style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w400)),
+            Text(
+              'Student Terminal',
+              style: GoogleFonts.fraunces(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.inkPrimary,
+                letterSpacing: -0.3,
+              ),
+            ),
+            Text(
+              'Academic enrollments & assessment performance',
+              style: GoogleFonts.dmSans(
+                fontSize: 12,
+                color: AppColors.inkSecondary,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
           ],
         ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
-            child: ElevatedButton.icon(
+            child: OutlinedButton.icon(
               onPressed: () => _showJoinDialog(context, ref),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Join Course'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryIndigo,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              icon: const Icon(Icons.add, size: 16),
+              label: Text(
+                'Join Course',
+                style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.inkPrimary,
+                side: const BorderSide(color: AppColors.ruleStrong, width: 1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.r6)),
               ),
             ),
           ),
@@ -65,11 +83,11 @@ class StudentDashboardScreen extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error_outline_rounded, size: 48, color: AppColors.dangerRose),
+                const Icon(Icons.error_outline_rounded, size: 48, color: AppColors.statusCritical),
                 const SizedBox(height: 12),
-                Text('Failed to load courses', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600)),
+                Text('Failed to load courses', style: GoogleFonts.fraunces(fontSize: 18, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 6),
-                Text(ErrorParser.parse(err), textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 13, color: AppColors.dangerRose)),
+                Text(ErrorParser.parse(err), textAlign: TextAlign.center, style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.statusCriticalInk)),
               ],
             ),
           ),
@@ -109,13 +127,13 @@ class StudentDashboardScreen extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.all(24),
             children: [
-              // Welcome header
+              // Editorial Masthead Welcome Header
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  gradient: AppGradients.primaryButton,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [const BoxShadow(color: Color(0x304F46E5), blurRadius: 16, offset: Offset(0, 6))],
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.r8),
+                  border: Border.all(color: AppColors.ruleStrong, width: 1),
                 ),
                 child: Row(
                   children: [
@@ -123,25 +141,58 @@ class StudentDashboardScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Welcome back,',
-                              style: GoogleFonts.inter(fontSize: 14, color: Colors.white.withOpacity(0.8))),
-                          const SizedBox(height: 4),
-                          Text(user?['full_name'] ?? 'Student',
-                              style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
+                          Text(
+                            'STUDENT DOSSIER',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.8,
+                              color: AppColors.inkSecondary,
+                            ),
+                          ),
                           const SizedBox(height: 6),
-                          Text('${allCourses.length} active enrollment(s)',
-                              style: GoogleFonts.inter(fontSize: 13, color: Colors.white.withOpacity(0.7))),
+                          Text(
+                            user?['full_name'] ?? 'Student',
+                            style: GoogleFonts.fraunces(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.inkPrimary,
+                              letterSpacing: -0.4,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppColors.canvas,
+                                  borderRadius: BorderRadius.circular(AppRadius.r4),
+                                  border: Border.all(color: AppColors.marginRule, width: 1),
+                                ),
+                                child: Text(
+                                  '${allCourses.length} ACTIVE ENROLLMENTS',
+                                  style: GoogleFonts.jetBrainsMono(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.inkPrimary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
                     Container(
-                      width: 64,
-                      height: 64,
+                      width: 56,
+                      height: 56,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(16),
+                        color: AppColors.canvas,
+                        borderRadius: BorderRadius.circular(AppRadius.r6),
+                        border: Border.all(color: AppColors.ruleStrong, width: 1),
                       ),
-                      child: const Icon(Icons.school_rounded, color: Colors.white, size: 32),
+                      child: const Icon(Icons.school_outlined, color: AppColors.inkPrimary, size: 28),
                     ),
                   ],
                 ),
@@ -151,11 +202,11 @@ class StudentDashboardScreen extends ConsumerWidget {
               // Quick Stats (Live calculations)
               Row(
                 children: [
-                  _quickStatCard('Enrolled', '${allCourses.length}', Icons.menu_book_rounded, AppColors.primaryIndigo),
+                  _quickStatCard('Enrolled', '${allCourses.length}', Icons.menu_book_rounded, AppColors.inkPrimary),
                   const SizedBox(width: 12),
                   _quickStatCard('Pending', '${stats['pending'] ?? 0}', Icons.pending_actions_rounded, AppColors.accentAmber),
                   const SizedBox(width: 12),
-                  _quickStatCard('Graded', '${stats['graded'] ?? 0}', Icons.grading_rounded, AppColors.successGreen),
+                  _quickStatCard('Graded', '${stats['graded'] ?? 0}', Icons.grading_rounded, AppColors.statusPass),
                 ],
               ),
               const SizedBox(height: 24),
@@ -169,8 +220,14 @@ class StudentDashboardScreen extends ConsumerWidget {
               const SizedBox(height: 24),
 
               // My Courses Section
-              Text('My Courses',
-                  style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              Text(
+                'Enrolled Courses',
+                style: GoogleFonts.fraunces(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.inkPrimary,
+                ),
+              ),
               const SizedBox(height: 12),
 
               ...allCourses.map((course) => Padding(
@@ -179,48 +236,67 @@ class StudentDashboardScreen extends ConsumerWidget {
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: () => context.go('/courses/${course['id']}'),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(AppRadius.r8),
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppColors.bgSurface,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.border),
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(AppRadius.r8),
+                        border: Border.all(color: AppColors.marginRule, width: 1),
                       ),
                       child: Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: AppColors.primaryIndigo.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(12),
+                              color: AppColors.canvas,
+                              borderRadius: BorderRadius.circular(AppRadius.r6),
+                              border: Border.all(color: AppColors.marginRule, width: 1),
                             ),
-                            child: const Icon(Icons.menu_book_rounded, color: AppColors.primaryIndigo, size: 24),
+                            child: const Icon(Icons.menu_book_outlined, color: AppColors.inkPrimary, size: 22),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(course['title'],
-                                    style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                                Text(
+                                  course['title'],
+                                  style: GoogleFonts.fraunces(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.inkPrimary,
+                                  ),
+                                ),
                                 const SizedBox(height: 4),
-                                Text('${course['code']} • ${course['semester']}',
-                                    style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
+                                Text(
+                                  '${course['code']} • ${course['semester']}',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 13,
+                                    color: AppColors.inkSecondary,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: AppColors.bgPage,
-                              borderRadius: BorderRadius.circular(8),
+                              color: AppColors.canvas,
+                              borderRadius: BorderRadius.circular(AppRadius.r4),
+                              border: Border.all(color: AppColors.marginRule, width: 1),
                             ),
-                            child: Text('${course['assignment_count'] ?? 0} asg',
-                                style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w600)),
+                            child: Text(
+                              '${course['assignment_count'] ?? 0} ASG',
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 11,
+                                color: AppColors.inkPrimary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                           const SizedBox(width: 8),
-                          const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+                          const Icon(Icons.chevron_right_rounded, color: AppColors.inkGhost),
                         ],
                       ),
                     ),
@@ -242,13 +318,17 @@ class StudentDashboardScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: Text('Join Course', style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+          title: Text(
+            'Join Course',
+            style: GoogleFonts.fraunces(fontWeight: FontWeight.w700, fontSize: 18),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'Enter the 6-character course code provided by your instructor.',
-                style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary),
+                style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.inkSecondary),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -256,6 +336,7 @@ class StudentDashboardScreen extends ConsumerWidget {
                 autofocus: true,
                 maxLength: 6,
                 textCapitalization: TextCapitalization.characters,
+                style: GoogleFonts.jetBrainsMono(fontWeight: FontWeight.w600, letterSpacing: 2),
                 decoration: const InputDecoration(
                   labelText: 'Course Code',
                   hintText: 'e.g. A9B8C7',
@@ -267,9 +348,14 @@ class StudentDashboardScreen extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: loading ? null : () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+              child: Text('Cancel', style: GoogleFonts.dmSans(color: AppColors.inkSecondary)),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.inkPrimary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.r6)),
+              ),
               onPressed: loading ? null : () async {
                 final code = codeCtrl.text.trim().toUpperCase();
                 if (code.isEmpty) return;
@@ -281,21 +367,21 @@ class StudentDashboardScreen extends ConsumerWidget {
                     ref.invalidate(courseListProvider);
                     ref.invalidate(studentDashboardProvider);
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Successfully joined the course!'),
-                      backgroundColor: AppColors.successGreen,
+                      content: Text('Successfully enrolled into course!'),
+                      backgroundColor: AppColors.statusPass,
                     ));
                   }
                 } catch (e) {
                   setState(() => loading = false);
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text(ErrorParser.parse(e)),
-                    backgroundColor: AppColors.dangerRose,
+                    backgroundColor: AppColors.statusCritical,
                   ));
                 }
               },
               child: loading
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Join'),
+                  : Text('Join', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
             ),
           ],
         ),
@@ -324,17 +410,37 @@ class StudentDashboardScreen extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.bgSurface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.r6),
+          border: Border.all(color: AppColors.marginRule, width: 1),
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: color, size: 22),
-            const SizedBox(height: 8),
-            Text(value, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-            const SizedBox(height: 2),
-            Text(label, style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted)),
+            Container(
+              height: 2,
+              width: 24,
+              color: color,
+              margin: const EdgeInsets.only(bottom: 12),
+            ),
+            Text(
+              label.toUpperCase(),
+              style: GoogleFonts.dmSans(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+                color: AppColors.inkSecondary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+                color: AppColors.inkPrimary,
+              ),
+            ),
           ],
         ),
       ),

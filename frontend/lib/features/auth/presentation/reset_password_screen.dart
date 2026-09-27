@@ -104,12 +104,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 440),
                     child: Container(
-                      padding: const EdgeInsets.all(40),
+                      padding: const EdgeInsets.all(36),
                       decoration: BoxDecoration(
-                        color: AppColors.bgCard,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: AppColors.border),
-                        boxShadow: AppShadows.elevated,
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(AppRadius.r8),
+                        border: Border.all(color: AppColors.ruleStrong, width: 1),
                       ),
                       child: Form(
                         key: _formKey,
@@ -118,22 +117,23 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Container(
-                              width: 56, height: 56,
+                              width: 52, height: 52,
                               decoration: BoxDecoration(
-                                color: AppColors.primarySoft,
-                                borderRadius: BorderRadius.circular(16),
+                                color: AppColors.canvas,
+                                borderRadius: BorderRadius.circular(AppRadius.r6),
+                                border: Border.all(color: AppColors.marginRule, width: 1),
                               ),
-                              child: const Icon(Icons.key_rounded, color: AppColors.primaryIndigo, size: 28),
+                              child: const Icon(Icons.key_rounded, color: AppColors.inkPrimary, size: 26),
                             ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 16),
                             Text(
-                              'Create new password',
-                              style: GoogleFonts.outfit(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -0.5),
+                              'Create New Password',
+                              style: GoogleFonts.fraunces(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.inkPrimary, letterSpacing: -0.4),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 6),
                             Text(
-                              'Your new password must be different from previous passwords.',
-                              style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
+                              'Your new password must be secure and different from previous passwords.',
+                              style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.inkSecondary, height: 1.5),
                             ),
                             const SizedBox(height: 24),
 
@@ -209,10 +209,19 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                             ),
                             const SizedBox(height: 24),
 
-                            _GlowButton(
-                              label: 'Reset Password',
-                              loading: _loading,
+                            ElevatedButton(
                               onPressed: _loading ? null : _submit,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.inkPrimary,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                minimumSize: const Size(double.infinity, 50),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.r6)),
+                                textStyle: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600),
+                              ),
+                              child: _loading
+                                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                  : const Text('Update Password'),
                             ),
                           ],
                         ),
@@ -224,56 +233,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _GlowButton extends StatefulWidget {
-  final String label;
-  final bool loading;
-  final VoidCallback? onPressed;
-  const _GlowButton({required this.label, required this.loading, this.onPressed});
-
-  @override
-  State<_GlowButton> createState() => _GlowButtonState();
-}
-
-class _GlowButtonState extends State<_GlowButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit:  (_) => setState(() => _hovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        decoration: BoxDecoration(
-          gradient: AppGradients.primaryButton,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: _hovered
-              ? [const BoxShadow(color: Color(0x804F46E5), blurRadius: 28, offset: Offset(0, 8))]
-              : [const BoxShadow(color: Color(0x404F46E5), blurRadius: 16, offset: Offset(0, 4))],
-        ),
-        child: AnimatedScale(
-          scale: _hovered ? 1.01 : 1.0,
-          duration: const Duration(milliseconds: 150),
-          child: ElevatedButton(
-            onPressed: widget.onPressed,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              shadowColor: Colors.transparent,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(double.infinity, 52),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
-            ),
-            child: widget.loading
-                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                : Text(widget.label),
-          ),
-        ),
       ),
     );
   }

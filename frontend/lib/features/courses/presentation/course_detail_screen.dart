@@ -16,6 +16,9 @@ import '../../auth/providers/auth_provider.dart';
 import '../../../core/utils/error_parser.dart';
 import '../data/course_repository.dart';
 import '../providers/course_providers.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../core/network/dio_client.dart';
+import '../../../core/network/api_constants.dart';
 import 'ai_quiz_obe_dialog.dart';
 
 class CourseDetailScreen extends ConsumerStatefulWidget {
@@ -1768,6 +1771,7 @@ class _MaterialsTabState extends ConsumerState<_MaterialsTab>
                     const Divider(color: AppColors.rule, height: 1),
                 itemBuilder: (ctx, i) {
                   final mat = materials[i];
+                  final matId = mat['material_id']?.toString() ?? '';
                   final filename = mat['filename']?.toString() ?? 'Document';
                   final fileType = mat['file_type']?.toString() ?? 'DOC';
                   final sizeBytes = mat['size_bytes'] as int? ?? 0;
@@ -1776,7 +1780,7 @@ class _MaterialsTabState extends ConsumerState<_MaterialsTab>
                   final status = mat['status']?.toString() ?? 'indexed';
 
                   return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Row(
                       children: [
                         StampBadge(
@@ -1792,7 +1796,7 @@ class _MaterialsTabState extends ConsumerState<_MaterialsTab>
                                 filename,
                                 style: GoogleFonts.dmSans(
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                                  fontWeight: FontWeight.w600,
                                   color: AppColors.inkPrimary,
                                 ),
                               ),
@@ -1828,6 +1832,34 @@ class _MaterialsTabState extends ConsumerState<_MaterialsTab>
                               ? StampType.pass
                               : StampType.pending,
                         ),
+                        const SizedBox(width: 10),
+                        // Download Material
+                        IconButton(
+                          icon: const Icon(Icons.download_rounded, size: 20, color: AppColors.inkPrimary),
+                          tooltip: 'Download File',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () => _downloadMaterial(matId, filename),
+                        ),
+                        if (isProf) ...[
+                          // Generate AI Quiz from Material
+                          IconButton(
+                            icon: const Icon(Icons.auto_awesome_rounded, size: 19, color: AppColors.signal),
+                            tooltip: 'Generate Quiz from this Material',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => AiQuizObeDialog.show(
+                              context,
+                              widget.courseId,
+                              filename,
+                            ),
+                          ),
+                          // Delete Material
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline_rounded, size: 20, color: AppColors.statusCritical),
+                            tooltip: 'Delete Material',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => _deleteMaterial(matId, filename),
+                          ),
+                        ],
                       ],
                     ),
                   );
@@ -1838,5 +1870,84 @@ class _MaterialsTabState extends ConsumerState<_MaterialsTab>
         ],
       ),
     );
+  }
+
+  Future<void> _downloadMaterial(String matId, String filename) async {
+    final token = await DioClient.getAccessToken();
+    final url = Uri.parse(
+      '${ApiConstants.baseUrl}/courses/${widget.courseId}/materials/$matId/download?token=$token',
+    );
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          JournalToastManager.show(
+            context,
+            'Could not trigger download for $filename',
+            status: ToastStatus.critical,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        JournalToastManager.show(
+          context,
+          'Download error: ${ErrorParser.parse(e)}',
+          status: ToastStatus.critical,
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteMaterial(String matId, String filename) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete Material', style: GoogleFonts.fraunces(fontSize: 18, fontWeight: FontWeight.bold)),
+        content: Text(
+          'Are you sure you want to delete "$filename"? It will also be removed from AI search context.',
+          style: GoogleFonts.dmSans(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.statusCritical,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await CourseRepository().deleteCourseMaterial(widget.courseId, matId);
+      ref.invalidate(courseMaterialsProvider(widget.courseId));
+      if (mounted) {
+        JournalToastManager.show(
+          context,
+          'Material deleted successfully',
+          secondary: filename,
+          status: ToastStatus.pass,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        JournalToastManager.show(
+          context,
+          'Delete failed',
+          secondary: ErrorParser.parse(e),
+          status: ToastStatus.critical,
+        );
+      }
+    }
   }
 }

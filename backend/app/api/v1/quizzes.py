@@ -371,6 +371,63 @@ async def download_course_material(
     )
 
 
+@router.delete("/courses/{course_id}/materials/{material_id}")
+async def delete_course_material(
+    course_id: int,
+    material_id: str,
+    user: Annotated[User, Depends(require_roles("professor", "admin", "ta"))] = None,
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+):
+    """Deletes an uploaded course lecture document and unindexes its chunks."""
+    course_svc = CourseService(db)
+    try:
+        await course_svc.get_course_with_access_check(course_id, user)
+    except (ValueError, PermissionError) as auth_err:
+        raise HTTPException(status_code=403, detail=str(auth_err))
+
+    upload_dir = os.path.abspath(os.path.join(settings.STORAGE_ROOT, "uploads", f"course_{course_id}"))
+    safe_mat_id = _sanitize_filename(material_id)
+
+    found = False
+    deleted_filename = None
+    if os.path.exists(upload_dir):
+        for fname in os.listdir(upload_dir):
+            if fname.startswith(safe_mat_id) or fname == safe_mat_id:
+                target_file = os.path.join(upload_dir, fname)
+                if os.path.isfile(target_file):
+                    os.remove(target_file)
+                    found = True
+                    parts = fname.split("_", 1)
+                    deleted_filename = parts[1] if len(parts) == 2 else fname
+                    break
+
+    # Unindex associated chunks from the metadata file
+    try:
+        pipeline = DoclingPipeline(course_id=course_id)
+        if pipeline.meta_file.exists():
+            with open(pipeline.meta_file, "r", encoding="utf-8") as f:
+                meta_chunks = json.load(f)
+            new_chunks = [
+                c for c in meta_chunks
+                if c.get("material_id") != safe_mat_id and c.get("source_file") != deleted_filename
+            ]
+            if len(new_chunks) != len(meta_chunks):
+                with open(pipeline.meta_file, "w", encoding="utf-8") as f:
+                    json.dump(new_chunks, f, ensure_ascii=False)
+    except Exception:
+        pass
+
+    if not found:
+        raise HTTPException(status_code=404, detail="Course material file not found.")
+
+    return {
+        "message": "Course material deleted successfully.",
+        "course_id": course_id,
+        "material_id": material_id,
+        "filename": deleted_filename,
+    }
+
+
 # ── 2. AI Question Generation (Llama-3.3-70B) ────────────────────────
 
 @router.post("/quizzes/{quiz_id}/generate-questions", response_model=GenerateQuestionsResponse)
