@@ -9,6 +9,7 @@ Hardened with Cloudflare Security Audit Principles:
 
 import base64
 import json
+import logging
 import os
 import random
 import re
@@ -19,7 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from decimal import Decimal
 from typing import Annotated, Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select, text
@@ -51,7 +52,7 @@ from app.services.clo_attainment import (
     CourseAttainmentReport,
     compute_and_record_attainment,
 )
-from app.services.document_ingestion import DoclingPipeline, ingest_course_document_task
+from app.services.document_ingestion import DoclingPipeline, ingest_course_document_task, _chunk_markdown
 from app.services.question_generation import generate_questions_task
 
 router = APIRouter(tags=["AI Assessments & OBE Quizzes"])
@@ -59,6 +60,7 @@ router = APIRouter(tags=["AI Assessments & OBE Quizzes"])
 # Maximum allowable upload size: 25 MB
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 settings = get_settings()
+logger = logging.getLogger("professor_os.quizzes")
 
 
 # ── Schemas ──────────────────────────────────────────────────────────
@@ -187,11 +189,38 @@ def _sanitize_filename(original_name: str) -> str:
     return sanitized or "unnamed_document.pdf"
 
 
+def _process_course_document_background(
+    course_id: int,
+    file_path: str,
+    filename: str,
+    material_id: str,
+) -> None:
+    """Executes high-speed in-process document extraction, semantic chunking, and vector indexing."""
+    try:
+        pipeline = DoclingPipeline(course_id=course_id)
+        markdown_text = pipeline.parse_document_to_markdown(file_path)
+        chunks = _chunk_markdown(
+            text=markdown_text,
+            chunk_size=settings.DOCLING_MAX_CHUNK_TOKENS * 4,
+            overlap=settings.DOCLING_CHUNK_OVERLAP_TOKENS * 4,
+        )
+        metadata = {
+            "filename": filename,
+            "material_id": material_id,
+            "file_path": file_path,
+        }
+        chunks_indexed = pipeline.update_vector_index(chunks=chunks, doc_metadata=metadata)
+        logger.info("Successfully indexed '%s' for course %d (%d chunks)", filename, course_id, chunks_indexed)
+    except Exception as exc:
+        logger.error("In-process document ingestion failed for '%s': %s", filename, exc, exc_info=True)
+
+
 # ── 1. Document Ingestion via IBM Docling ─────────────────────────────
 
 @router.post("/courses/{course_id}/materials/ingest", status_code=status.HTTP_202_ACCEPTED)
 async def ingest_course_material(
     course_id: int,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     user: Annotated[User, Depends(require_roles("professor", "admin", "ta"))] = None,
     db: Annotated[AsyncSession, Depends(get_db)] = None,
@@ -245,23 +274,38 @@ async def ingest_course_material(
                 )
             buffer.write(chunk)
 
-    # Dispatch Celery task to rag_queue
-    task = ingest_course_document_task.delay(
+    # 1. Enqueue in-process indexing via FastAPI BackgroundTasks (guarantees indexing even when Celery is bypassed)
+    background_tasks.add_task(
+        _process_course_document_background,
         course_id=course_id,
         file_path=os.path.abspath(saved_path),
         filename=safe_name,
         material_id=material_id,
-        file_data_b64=base64.b64encode(Path(saved_path).read_bytes()).decode("ascii"),
     )
+
+    # 2. Also attempt Celery queue dispatch if broker is reachable (non-blocking fallback)
+    task_id = f"bg_{material_id[:8]}"
+    try:
+        task = ingest_course_document_task.delay(
+            course_id=course_id,
+            file_path=os.path.abspath(saved_path),
+            filename=safe_name,
+            material_id=material_id,
+            file_data_b64=base64.b64encode(Path(saved_path).read_bytes()).decode("ascii"),
+        )
+        if task and hasattr(task, "id"):
+            task_id = task.id
+    except Exception as celery_err:
+        logger.info("Celery broker offline or refused connection (%s); handled via FastAPI BackgroundTasks.", celery_err)
 
     return {
         "status": "queued",
-        "task_id": task.id,
+        "task_id": task_id,
         "material_id": material_id,
         "filename": safe_name,
         "size_bytes": total_bytes,
         "queue": "rag_queue",
-        "message": "Document uploaded and queued for Docling structural parsing and FAISS indexing.",
+        "message": "Document uploaded and queued for indexing.",
     }
 
 

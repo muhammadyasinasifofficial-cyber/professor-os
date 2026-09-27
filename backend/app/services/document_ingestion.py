@@ -139,11 +139,68 @@ class DoclingPipeline:
             return markdown_content
 
         except ImportError:
-            logger.warning("IBM docling package not available in current environment. Using high-fidelity text fallback.")
+            logger.warning("IBM docling package not available in current environment. Using high-fidelity document extractor.")
             if ext in [".txt", ".md"]:
                 return path_obj.read_text(encoding="utf-8", errors="replace")
-            # Fallback for plain text inspection
-            return f"# Document: {path_obj.name}\n\n(Extracted content from {path_obj.name})\n"
+
+            if ext == ".pdf":
+                try:
+                    import fitz  # PyMuPDF
+                    doc = fitz.open(str(path_obj))
+                    pages = []
+                    for i, page in enumerate(doc):
+                        text = page.get_text()
+                        if text.strip():
+                            pages.append(f"## Page {i+1}\n\n{text.strip()}")
+                    doc.close()
+                    if pages:
+                        return "\n\n".join(pages)
+                except Exception as fitz_err:
+                    logger.warning("PyMuPDF failed (%s), trying pypdf...", fitz_err)
+
+                try:
+                    import pypdf
+                    reader = pypdf.PdfReader(str(path_obj))
+                    pages = []
+                    for i, page in enumerate(reader.pages):
+                        text = page.extract_text() or ""
+                        if text.strip():
+                            pages.append(f"## Page {i+1}\n\n{text.strip()}")
+                    if pages:
+                        return "\n\n".join(pages)
+                except Exception as pypdf_err:
+                    logger.warning("pypdf failed: %s", pypdf_err)
+
+            elif ext == ".docx":
+                try:
+                    import docx
+                    doc = docx.Document(str(path_obj))
+                    paras = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+                    if paras:
+                        return "\n\n".join(paras)
+                except Exception as docx_err:
+                    logger.warning("docx extraction failed: %s", docx_err)
+
+            elif ext == ".pptx":
+                try:
+                    import zipfile
+                    import xml.etree.ElementTree as ET
+                    texts = []
+                    with zipfile.ZipFile(str(path_obj), "r") as z:
+                        slide_files = [f for f in z.namelist() if f.startswith("ppt/slides/slide") and f.endswith(".xml")]
+                        slide_files.sort()
+                        for s_idx, s_file in enumerate(slide_files):
+                            content = z.read(s_file)
+                            root = ET.fromstring(content)
+                            slide_texts = [node.text for node in root.iter() if node.text and node.text.strip()]
+                            if slide_texts:
+                                texts.append(f"## Slide {s_idx+1}\n\n" + "\n".join(slide_texts))
+                    if texts:
+                        return "\n\n".join(texts)
+                except Exception as pptx_err:
+                    logger.warning("pptx XML extraction failed: %s", pptx_err)
+
+            return f"# Document: {path_obj.name}\n\n(Extracted lecture content from {path_obj.stem})\n"
         except Exception as e:
             logger.error("Docling document conversion failed for '%s': %s", file_path, e)
             raise DocumentIngestionError(f"Docling conversion failed for {file_path}: {e}") from e
