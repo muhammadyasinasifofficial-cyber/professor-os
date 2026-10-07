@@ -192,8 +192,9 @@ async def join_course(
         resp.user_name = user.full_name
         resp.user_email = user.email
         return resp
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except (ValueError, PermissionError) as e:
+        code = 403 if isinstance(e, PermissionError) else 400
+        raise HTTPException(status_code=code, detail=str(e))
 
 
 @router.delete("/{course_id}/enroll/{uid}")

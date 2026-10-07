@@ -34,13 +34,23 @@ class SubmissionService:
         assignment = await self.db.get(Assignment, assignment_id)
         if not assignment:
             raise ValueError("Assignment not found.")
+        if assignment.status == "closed":
+            raise ValueError("This assignment is closed for submissions.")
         if assignment.status != "published":
             raise ValueError("Assignment is not yet published.")
+
+        if assignment.deadline:
+            now = datetime.now(timezone.utc)
+            dl = assignment.deadline if assignment.deadline.tzinfo else assignment.deadline.replace(tzinfo=timezone.utc)
+            if now > dl and not assignment.allow_late:
+                raise ValueError("The submission deadline has passed and late submissions are not allowed.")
 
         # Check if already submitted (update instead of create)
         existing = await self._get_submission(assignment_id, student_id)
         if existing:
-            # Allow resubmission – update content, reset to pending
+            if existing.status == SubmissionStatus.GRADED.value:
+                raise ValueError("This assignment has already been evaluated and graded. Submissions can no longer be modified.")
+            # Allow resubmission for pending submissions – update content
             existing.content = data.content
             existing.submission_type = data.submission_type
             existing.status = SubmissionStatus.PENDING.value
@@ -74,8 +84,16 @@ class SubmissionService:
         assignment = await self.db.get(Assignment, assignment_id)
         if not assignment:
             raise ValueError("Assignment not found.")
+        if assignment.status == "closed":
+            raise ValueError("This assignment is closed for submissions.")
         if assignment.status != "published":
             raise ValueError("Assignment is not yet published.")
+
+        if assignment.deadline:
+            now = datetime.now(timezone.utc)
+            dl = assignment.deadline if assignment.deadline.tzinfo else assignment.deadline.replace(tzinfo=timezone.utc)
+            if now > dl and not assignment.allow_late:
+                raise ValueError("The submission deadline has passed and late submissions are not allowed.")
 
         # Persist file to disk
         SUBMISSIONS_DIR.mkdir(parents=True, exist_ok=True)
@@ -93,6 +111,8 @@ class SubmissionService:
 
         existing = await self._get_submission(assignment_id, student_id)
         if existing:
+            if existing.status == SubmissionStatus.GRADED.value:
+                raise ValueError("This assignment has already been evaluated and graded. Submissions can no longer be modified.")
             existing.submission_type = "file"
             existing.file_path = str(file_path)
             existing.file_name = filename

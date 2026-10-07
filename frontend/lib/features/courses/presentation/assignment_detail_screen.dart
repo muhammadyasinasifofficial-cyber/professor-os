@@ -1,5 +1,6 @@
 /// ProfessorOS – Assignment Detail Screen.
 
+import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -88,6 +89,32 @@ class _AssignmentDetailScreenState
   final _textSubmissionCtrl = TextEditingController();
   final _codeSubmissionCtrl = TextEditingController();
   int? _mcqSelectedValue;
+  final Map<int, int> _mcqAnswers = {};
+
+  Future<void> _downloadSubmissionFile(int submissionId, String filename) async {
+    try {
+      final token = await DioClient.getAccessToken();
+      final url = Uri.parse(
+          '${ApiConstants.baseUrl}/submissions/$submissionId/file?token=$token');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Could not trigger download for $filename'),
+            backgroundColor: AppColors.dangerRose,
+          ));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Download failed: ${ErrorParser.parse(e)}'),
+          backgroundColor: AppColors.dangerRose,
+        ));
+      }
+    }
+  }
 
   String _formatSubmissionDate(dynamic raw) {
     if (raw == null) return '';
@@ -1181,28 +1208,104 @@ if (aiEvaluation != null &&
     final timeLimitMinutes = _assignment?['time_limit_minutes'] as int?;
     final isQuizOrExam = assignmentType == 'quiz' ||
         assignmentType == 'exam' ||
+        assignmentType == 'mcq' ||
         (timeLimitMinutes != null && timeLimitMinutes > 0);
 
+    final deadlineRaw = _assignment?['deadline'];
+    DateTime? deadline;
+    if (deadlineRaw != null) {
+      deadline = DateTime.tryParse(deadlineRaw.toString());
+    }
+    final now = DateTime.now();
+    final isPastDeadline = deadline != null && now.isAfter(deadline);
+    final allowLate = _assignment?['allow_late'] == true;
+    final isAssignmentClosed =
+        _assignment?['status']?.toString().toLowerCase() == 'closed';
+    final isSubmissionClosed =
+        isAssignmentClosed || (isPastDeadline && !allowLate);
+
+    if (!hasSubmitted && isSubmissionClosed) {
+      return ProfCard(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          child: Column(
+            children: [
+              const Icon(Icons.event_busy_rounded,
+                  size: 48, color: AppColors.dangerRose),
+              const SizedBox(height: 12),
+              Text(
+                'Submissions Closed',
+                style: GoogleFonts.outfit(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.inkPrimary),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                isAssignmentClosed
+                    ? 'This assignment has been closed for submissions by the instructor.'
+                    : 'The submission deadline (${_formatSubmissionDate(deadlineRaw)}) has passed, and late submissions are not permitted.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                    fontSize: 14, color: AppColors.inkSecondary, height: 1.4),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (!hasSubmitted && isQuizOrExam) {
-      final isQuiz = assignmentType == 'quiz';
+      final isQuiz = assignmentType == 'quiz' || assignmentType == 'mcq';
       return ProfCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (isPastDeadline && allowLate) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.accentAmber.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.accentAmber.withOpacity(0.5)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        size: 20, color: AppColors.accentAmber),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Notice: Late submission policy is active (${_assignment?['late_penalty_per_day'] ?? 0}% penalty/day).',
+                        style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.inkPrimary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             Text(isQuiz ? 'Quiz Assessment' : 'Timed Examination',
                 style: GoogleFonts.dmSans(
                     fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.inkPrimary)),
             const SizedBox(height: 8),
             Text(
               isQuiz
-                  ? 'This is an academic quiz assessment with structured questions. Click below to begin your attempt.'
+                  ? 'This is an academic quiz assessment with structured questions. Click below to begin your attempt in focused assessment mode.'
                   : 'This is a timed examination (${timeLimitMinutes ?? 60} minutes). Once you start, the assessment begins and fullscreen focus mode is active.',
               style: GoogleFonts.dmSans(
                   color: AppColors.inkSecondary, height: 1.5),
             ),
             const SizedBox(height: 24),
             PrimaryButton(
-              label: isQuiz ? 'Start Quiz Assessment' : 'Start Exam (${timeLimitMinutes ?? 60} min)',
+              label: isQuiz
+                  ? (timeLimitMinutes != null && timeLimitMinutes > 0
+                      ? 'Start Quiz Assessment ($timeLimitMinutes min)'
+                      : 'Start Quiz Assessment')
+                  : 'Start Exam (${timeLimitMinutes ?? 60} min)',
               onPressed: () {
                 Navigator.of(context)
                     .push(MaterialPageRoute(
@@ -1210,7 +1313,9 @@ if (aiEvaluation != null &&
                         courseId: widget.courseId,
                         assignmentId: widget.assignmentId,
                         assignmentTitle: _assignment!['title'] ?? 'Assessment',
-                        assignmentType: isQuiz ? 'mcq' : (_assignment!['type'] ?? 'text'),
+                        assignmentType: (assignmentType == 'mcq' || isQuiz)
+                            ? 'mcq'
+                            : (_assignment!['type'] ?? 'text'),
                         description: _assignment!['description'],
                         maxMarks:
                             (_assignment!['max_marks'] as num?)?.toDouble() ??
@@ -1228,10 +1333,8 @@ if (aiEvaluation != null &&
             ),
           ],
         ),
-);
-  }
-
-
+      );
+    }
 
     return ProfCard(
       child: Column(
@@ -1274,7 +1377,7 @@ if (aiEvaluation != null &&
                         ],
                       ),
                       Text(
-                        'Submitted ${sub['submitted_at']}',
+                        'Submitted ${_formatSubmissionDate(sub['submitted_at'])}',
                         style: GoogleFonts.inter(
                             fontSize: 12, color: AppColors.textMuted),
                       ),
@@ -1296,17 +1399,38 @@ if (aiEvaluation != null &&
                       border: Border.all(color: AppColors.border),
                     ),
                     child: sub['submission_type'] == 'file'
-                        ? Row(
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.insert_drive_file,
-                                  color: AppColors.primaryIndigo, size: 20),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(sub['content'] ?? '',
-                                    style: GoogleFonts.inter(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.textPrimary)),
+                              Row(
+                                children: [
+                                  const Icon(Icons.insert_drive_file,
+                                      color: AppColors.primaryIndigo, size: 20),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                        sub['file_name'] ?? sub['content'] ?? '',
+                                        style: GoogleFonts.inter(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.textPrimary)),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              ElevatedButton.icon(
+                                onPressed: () => _downloadSubmissionFile(
+                                  sub['id'] as int,
+                                  sub['file_name'] ?? sub['content'] ?? 'submission_file',
+                                ),
+                                icon: const Icon(Icons.download_rounded, size: 16),
+                                label: const Text('Download Submitted File'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primaryIndigo,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  textStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600),
+                                ),
                               ),
                             ],
                           )
@@ -1364,20 +1488,105 @@ if (aiEvaluation != null &&
                       ),
                     ),
                   ],
+                  // AI Evaluation / Rubric Breakdown
+                  Builder(builder: (context) {
+                    Map<String, dynamic>? metadata;
+                    if (sub['evaluation_metadata'] is Map<String, dynamic>) {
+                      metadata = sub['evaluation_metadata'];
+                    } else if (sub['evaluation_metadata'] is String &&
+                        sub['evaluation_metadata'].toString().isNotEmpty) {
+                      try {
+                        metadata = jsonDecode(sub['evaluation_metadata'])
+                            as Map<String, dynamic>;
+                      } catch (_) {}
+                    }
+                    if (metadata != null &&
+                        (metadata['criteria_evaluations'] is List ||
+                            metadata['diagnostic_reasoning'] != null)) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: _buildStudentDiagnosticCard(metadata, sub),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }),
                   const SizedBox(height: 16),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _mySubmission = null;
-                      });
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text(
-                            'Re-opened submission form. Upload your updated work below.'),
-                      ));
-                    },
-                    icon: const Icon(Icons.refresh, size: 16),
-                    label: const Text('Resubmit Assignment'),
-                  ),
+                  if (isGraded)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.bgSurface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.lock_outline_rounded,
+                              size: 18, color: AppColors.textMuted),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Grades have been finalized by your instructor. Submissions are closed.',
+                              style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: AppColors.textMuted,
+                                  fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (isSubmissionClosed)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.dangerRose.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.dangerRose.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.alarm_off_rounded,
+                              size: 18, color: AppColors.dangerRose),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'The deadline for this assignment has passed and submissions are closed.',
+                              style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: AppColors.dangerRose,
+                                  fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else ...[
+                    if (isPastDeadline && allowLate)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Text(
+                          'Late resubmission active: ${_assignment?['late_penalty_per_day'] ?? 0}% penalty per day applies.',
+                          style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: AppColors.accentAmber,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _mySubmission = null;
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text(
+                              'Re-opened submission form. Upload your updated work below.'),
+                        ));
+                      },
+                      icon: const Icon(Icons.refresh, size: 16),
+                      label: const Text('Resubmit Assignment'),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1393,6 +1602,32 @@ if (aiEvaluation != null &&
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (isPastDeadline && allowLate)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.accentAmber.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.accentAmber.withOpacity(0.5)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.warning_amber_rounded,
+                              size: 20, color: AppColors.accentAmber),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Notice: Late submission policy is active. Submissions after ${_formatSubmissionDate(deadlineRaw)} will incur a ${_assignment?['late_penalty_per_day'] ?? 0}% penalty per day up to ${_assignment?['max_penalty_cap'] ?? 100}%.',
+                              style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.inkPrimary),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   if (assignmentType == 'file') ...[
                     Text('Upload PDF/ZIP Submission File',
                         style: GoogleFonts.outfit(
@@ -1587,111 +1822,236 @@ if (aiEvaluation != null &&
                       final questions = parseMcqDescription(
                           _assignment?['description']?.toString());
                       if (questions.isEmpty) {
-                        return const Text(
-                            'This quiz has no configured questions yet.');
+                        return Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.bgSurface,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: const Text(
+                            'This quiz has no configured questions yet.',
+                            style: TextStyle(color: AppColors.textMuted),
+                          ),
+                        );
                       }
-                      final question = questions.first;
-                      final options = (question['options'] as List?)
-                              ?.map((option) => option.toString())
-                              .toList() ??
-                          const <String>[];
+
+                      final answeredCount = _mcqAnswers.length;
+                      final totalQuestions = questions.length;
+
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Complete Multiple Choice Quiz',
-                              style: GoogleFonts.outfit(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary)),
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.bgSurface,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Question: ${question['question']}',
-                                    style: GoogleFonts.inter(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.textPrimary)),
-                                const SizedBox(height: 12),
-                                ...List.generate(
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('Multiple Choice Assessment',
+                                  style: GoogleFonts.outfit(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary)),
+                              ProfBadge(
+                                label: '$answeredCount / $totalQuestions Answered',
+                                color: answeredCount == totalQuestions
+                                    ? AppColors.successGreen
+                                    : AppColors.primaryIndigo,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Select your answers for all questions below. You can also switch to fullscreen exam mode for a distraction-free experience.',
+                            style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                                height: 1.4),
+                          ),
+                          const SizedBox(height: 16),
+                          ...List.generate(questions.length, (qIndex) {
+                            final question = questions[qIndex];
+                            final options = (question['options'] as List?)
+                                    ?.map((option) => option.toString())
+                                    .toList() ??
+                                const <String>[];
+                            final selectedVal = _mcqAnswers[qIndex];
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.bgSurface,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: selectedVal != null
+                                      ? AppColors.primaryIndigo.withOpacity(0.5)
+                                      : AppColors.border,
+                                  width: selectedVal != null ? 1.5 : 1.0,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primaryIndigo.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          'Q${qIndex + 1}',
+                                          style: GoogleFonts.jetBrainsMono(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 12,
+                                              color: AppColors.primaryIndigo),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          question['question']?.toString() ?? '',
+                                          style: GoogleFonts.inter(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.textPrimary),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  ...List.generate(
                                     options.length,
-                                    (index) => RadioListTile<int>(
-                                          title: Text(options[index],
-                                              style: const TextStyle(
-                                                  fontSize: 13)),
-                                          value: index + 1,
-                                          groupValue: _mcqSelectedValue,
-                                          contentPadding: EdgeInsets.zero,
-                                          onChanged: (val) => setState(
-                                              () => _mcqSelectedValue = val),
-                                        )),
-                              ],
-                            ),
+                                    (optIndex) => RadioListTile<int>(
+                                      title: Text(options[optIndex],
+                                          style: GoogleFonts.inter(
+                                              fontSize: 13,
+                                              color: AppColors.textPrimary)),
+                                      value: optIndex + 1,
+                                      groupValue: selectedVal,
+                                      contentPadding: EdgeInsets.zero,
+                                      dense: true,
+                                      onChanged: (val) {
+                                        if (val != null) {
+                                          setState(() {
+                                            _mcqAnswers[qIndex] = val;
+                                            if (qIndex == 0) _mcqSelectedValue = val;
+                                          });
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: (_mcqAnswers.isEmpty || _submissionLoading)
+                                      ? null
+                                      : () async {
+                                          setState(() => _submissionLoading = true);
+                                          String content;
+                                          if (questions.length == 1) {
+                                            final val = _mcqAnswers[0] ?? _mcqSelectedValue ?? 1;
+                                            final letter = ['A', 'B', 'C', 'D', 'E'][(val - 1).clamp(0, 4)];
+                                            content = 'Option $letter';
+                                          } else {
+                                            final buffer = StringBuffer();
+                                            for (var i = 0; i < questions.length; i++) {
+                                              final val = _mcqAnswers[i];
+                                              final letter = val != null
+                                                  ? ['A', 'B', 'C', 'D', 'E'][(val - 1).clamp(0, 4)]
+                                                  : 'None';
+                                              buffer.writeln('Question ${i + 1}: Option $letter');
+                                            }
+                                            content = buffer.toString().trim();
+                                          }
+                                          try {
+                                            await CourseRepository().submitAssignment(
+                                              widget.courseId,
+                                              widget.assignmentId,
+                                              {
+                                                'submission_type': 'mcq',
+                                                'content': content
+                                              },
+                                            );
+                                            if (mounted) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(const SnackBar(
+                                                content: Text('Quiz answers submitted successfully!'),
+                                                backgroundColor: Colors.green,
+                                              ));
+                                              setState(() {
+                                                _mcqAnswers.clear();
+                                                _mcqSelectedValue = null;
+                                              });
+                                              await _loadSubmissions();
+                                            }
+                                          } catch (e) {
+                                            if (mounted) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(SnackBar(
+                                                content: Text(ErrorParser.parse(e)),
+                                                backgroundColor: Colors.red,
+                                              ));
+                                            }
+                                          } finally {
+                                            if (mounted) {
+                                              setState(() => _submissionLoading = false);
+                                            }
+                                          }
+                                        },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primaryIndigo,
+                                    foregroundColor: Colors.white,
+                                    minimumSize: const Size(double.infinity, 48),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  child: Text(
+                                    questions.length > 1
+                                        ? 'Submit All ($answeredCount/$totalQuestions answered)'
+                                        : 'Submit Quiz',
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              OutlinedButton.icon(
+                                onPressed: () {
+                                  Navigator.of(context).push(MaterialPageRoute(
+                                    builder: (_) => ExamScreen(
+                                      courseId: widget.courseId,
+                                      assignmentId: widget.assignmentId,
+                                      assignmentTitle: _assignment!['title'] ?? 'Assessment',
+                                      assignmentType: 'mcq',
+                                      description: _assignment!['description'],
+                                      maxMarks: (_assignment!['max_marks'] as num?)?.toDouble() ?? 100.0,
+                                      timeLimitMinutes: _assignment!['time_limit_minutes'] as int?,
+                                      randomizeQuestions: _assignment!['randomize_questions'] as bool? ?? false,
+                                      showResultsAfter: _assignment!['show_results_after'] as bool? ?? true,
+                                    ),
+                                  )).then((_) => _loadSubmissions());
+                                },
+                                icon: const Icon(Icons.fullscreen_rounded, size: 18),
+                                label: const Text('Exam Mode'),
+                                style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size(130, 48),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10)),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       );
                     }),
                     const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: (_mcqSelectedValue == null ||
-                              _submissionLoading)
-                          ? null
-                          : () async {
-                              setState(() => _submissionLoading = true);
-                              final optionLetter = [
-                                'A',
-                                'B',
-                                'C',
-                                'D',
-                                'E'
-                              ][(_mcqSelectedValue! - 1).clamp(0, 4)];
-                              final content = 'Option $optionLetter';
-                              try {
-                                await CourseRepository().submitAssignment(
-                                  widget.courseId,
-                                  widget.assignmentId,
-                                  {
-                                    'submission_type': 'mcq',
-                                    'content': content
-                                  },
-                                );
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context)
-                                      .showSnackBar(const SnackBar(
-                                    content: Text('Quiz answer submitted!'),
-                                    backgroundColor: Colors.green,
-                                  ));
-                                  setState(() => _mcqSelectedValue = null);
-                                  await _loadSubmissions();
-                                }
-                              } catch (e) {
-                                if (mounted)
-                                  ScaffoldMessenger.of(context)
-                                      .showSnackBar(SnackBar(
-                                    content: Text(ErrorParser.parse(e)),
-                                    backgroundColor: Colors.red,
-                                  ));
-                              } finally {
-                                if (mounted)
-                                  setState(() => _submissionLoading = false);
-                              }
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryIndigo,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(double.infinity, 48),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: const Text('Submit Quiz'),
-                    ),
                   ] else ...[
                     Text('Write Q&A Response Submission',
                         style: GoogleFonts.outfit(
@@ -1822,6 +2182,224 @@ if (aiEvaluation != null &&
     }
     
     return result.join('\n');
+  }
+
+  Widget _buildStudentDiagnosticCard(
+      Map<String, dynamic> metadata, Map<String, dynamic> sub) {
+    final criteria = (metadata['criteria_evaluations'] as List?)
+            ?.cast<Map<String, dynamic>>() ??
+        [];
+    final reasoning = metadata['diagnostic_reasoning']?.toString();
+    final modelName = metadata['evaluator_model']?.toString() ??
+        'DeepSeek-R1-Distill-70B';
+    final needsReview = metadata['needs_review'] == true;
+    final reviewReasons = (metadata['review_reasons'] as List?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.canvas,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.auto_awesome,
+                  size: 18, color: AppColors.primaryIndigo),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'AI Evaluation & Rubric Breakdown',
+                  style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.inkPrimary),
+                ),
+              ),
+              ProfBadge(
+                label: 'Powered by $modelName',
+                color: AppColors.primaryIndigo,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (needsReview) ...[
+            Container(
+              padding: const EdgeInsets.all(10),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.shade700, width: 0.8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 16, color: Colors.amber),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'This automated assessment is flagged for instructor review: ${reviewReasons.join(", ")}',
+                      style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: Colors.amber.shade900,
+                          fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (reasoning != null && reasoning.isNotEmpty) ...[
+            Text('Pedagogical Rationale:',
+                style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    color: AppColors.inkSecondary)),
+            const SizedBox(height: 4),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.bgSurface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Text(
+                reasoning,
+                style: GoogleFonts.inter(
+                    fontSize: 13,
+                    height: 1.45,
+                    color: AppColors.inkPrimary),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (criteria.isNotEmpty) ...[
+            Text('Rubric Criteria Performance:',
+                style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    color: AppColors.inkSecondary)),
+            const SizedBox(height: 8),
+            ...criteria.map((c) {
+              final cName = c['criterion_name'] ?? 'Criterion';
+              final score = (c['score_awarded'] ?? c['score'] as num?)?.toDouble() ?? 0.0;
+              final max = (c['max_score'] as num?)?.toDouble() ?? 10.0;
+              final level = (c['assigned_level'] ?? 'satisfactory').toString().toLowerCase();
+              final rationale = c['rationale']?.toString() ?? '';
+              final evidence = c['evidence_quote']?.toString() ?? '';
+
+              Color levelColor;
+              switch (level) {
+                case 'excellent':
+                  levelColor = AppColors.successGreen;
+                  break;
+                case 'satisfactory':
+                  levelColor = AppColors.primaryIndigo;
+                  break;
+                case 'developing':
+                  levelColor = Colors.orange;
+                  break;
+                default:
+                  levelColor = AppColors.dangerRose;
+              }
+
+              final pct = max > 0 ? (score / max).clamp(0.0, 1.0) : 0.0;
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.bgSurface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            cName,
+                            style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.inkPrimary),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ProfBadge(
+                          label: level.toUpperCase(),
+                          color: levelColor,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${score.toStringAsFixed(1)} / ${max.toStringAsFixed(1)} pts',
+                          style: GoogleFonts.jetBrainsMono(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.inkPrimary),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: LinearProgressIndicator(
+                        value: pct,
+                        minHeight: 5,
+                        backgroundColor: AppColors.border,
+                        valueColor: AlwaysStoppedAnimation<Color>(levelColor),
+                      ),
+                    ),
+                    if (rationale.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        rationale,
+                        style: GoogleFonts.inter(
+                            fontSize: 12,
+                            height: 1.4,
+                            color: AppColors.inkSecondary),
+                      ),
+                    ],
+                    if (evidence.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.03),
+                          borderRadius: BorderRadius.circular(4),
+                          border: const Border(
+                            left: BorderSide(
+                                color: AppColors.primaryIndigo, width: 3),
+                          ),
+                        ),
+                        child: Text(
+                          '"$evidence"',
+                          style: GoogleFonts.jetBrainsMono(
+                              fontSize: 11,
+                              fontStyle: FontStyle.italic,
+                              color: AppColors.inkSecondary),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+    );
   }
 }
 

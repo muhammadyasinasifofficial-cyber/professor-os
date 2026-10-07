@@ -1,6 +1,7 @@
 """ProfessorOS – Verification test suite for security, prompt hardening, and architecture fixes."""
 
 import inspect
+import pytest
 from app.config.settings import Settings, get_settings
 from app.config.llm_config import LLMClient, LLMPipeline
 from app.services.grading_pipeline import SYSTEM_GRADING_PROMPT, _get_sync_engine
@@ -66,3 +67,53 @@ def test_document_text_extraction(tmp_path):
     extracted_pdf = extract_text_from_submission_file(str(pdf_file))
     assert "Concurrency Analysis" in extracted_pdf
     assert "[Page 1]" in extracted_pdf
+
+
+@pytest.mark.asyncio
+async def test_submission_deadline_and_graded_guards():
+    """Verify SubmissionService guards against closed assignments, passed deadlines, and modifying graded submissions."""
+    from datetime import datetime, timezone, timedelta
+    from unittest.mock import AsyncMock, MagicMock
+    from app.services.submission_service import SubmissionService
+    from app.models.assignment import Assignment
+    from app.models.submission import Submission, SubmissionStatus
+    from app.schemas.submission import SubmissionCreate
+
+    db = AsyncMock()
+    svc = SubmissionService(db)
+
+    # 1. Closed assignment
+    closed_assignment = MagicMock(spec=Assignment)
+    closed_assignment.status = "closed"
+    closed_assignment.deadline = None
+    closed_assignment.allow_late = False
+    db.get.return_value = closed_assignment
+
+    data = SubmissionCreate(submission_type="text", content="my answer")
+    with pytest.raises(ValueError, match="closed for submissions"):
+        await svc.submit(1, 1, data)
+
+    # 2. Past deadline without allow_late
+    past_assignment = MagicMock(spec=Assignment)
+    past_assignment.status = "published"
+    past_assignment.deadline = datetime.now(timezone.utc) - timedelta(hours=2)
+    past_assignment.allow_late = False
+    db.get.return_value = past_assignment
+
+    with pytest.raises(ValueError, match="deadline.*has passed"):
+        await svc.submit(1, 1, data)
+
+    # 3. Already graded submission cannot be wiped/modified
+    valid_assignment = MagicMock(spec=Assignment)
+    valid_assignment.status = "published"
+    valid_assignment.deadline = datetime.now(timezone.utc) + timedelta(days=1)
+    valid_assignment.allow_late = False
+    db.get.return_value = valid_assignment
+
+    graded_sub = MagicMock(spec=Submission)
+    graded_sub.status = SubmissionStatus.GRADED.value
+    svc._get_submission = AsyncMock(return_value=graded_sub)
+
+    with pytest.raises(ValueError, match="already been evaluated and graded"):
+        await svc.submit(1, 1, data)
+
