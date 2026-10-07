@@ -119,14 +119,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final verified = user?['is_verified'] as bool? ?? true;
 
     return Scaffold(
-      backgroundColor: AppColors.bgPage,
+      backgroundColor: AppColors.canvas,
       appBar: AppBar(
+        backgroundColor: AppColors.canvas,
+        surfaceTintColor: Colors.transparent,
         title: Text('Account Settings',
-            style: GoogleFonts.fraunces(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
+            style: GoogleFonts.dmSerifDisplay(
+                fontSize: 22,
                 color: AppColors.inkPrimary)),
         elevation: 0,
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, color: AppColors.rule),
+        ),
       ),
       body: SingleChildScrollView(
         padding:
@@ -536,11 +541,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       String title, String val, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: const BoxDecoration(
-          border: Border(
-        bottom: BorderSide(color: AppColors.marginRule),
-        right: BorderSide(color: AppColors.marginRule),
-      )),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.r6),
+        border: Border.all(color: AppColors.rule, width: 1),
+      ),
       child: Row(
         children: [
           Icon(icon, color: color, size: 24),
@@ -567,134 +572,200 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildAdminStats(BuildContext context) {
-    final coursesAsync = ref.watch(courseListProvider);
-    final courses = (coursesAsync.valueOrNull as List?)?.whereType<Map<String, dynamic>>().toList() ?? <Map<String, dynamic>>[];
-    final totalCourses = courses.length;
-    final totalStudents = courses.fold<int>(
-        0, (sum, c) => sum + ((c['enrollment_count'] as num?)?.toInt() ?? 0));
+    try {
+      final coursesAsync = ref.watch(courseListProvider);
+      final Object? data = coursesAsync.valueOrNull;
+      final List<dynamic> rawList;
+      if (data != null && data is Map && data['courses'] is List) {
+        rawList = data['courses'] as List<dynamic>;
+      } else if (data != null && data is List) {
+        rawList = data;
+      } else {
+        rawList = const <dynamic>[];
+      }
+      final courses = rawList.whereType<Map<String, dynamic>>().toList();
+      final totalCourses = courses.length;
+      final totalStudents = courses.fold<int>(
+          0, (sum, c) => sum + ((c['enrollment_count'] as num?)?.toInt() ?? 0));
 
-    final isMobile = MediaQuery.sizeOf(context).width < 560;
-    final children = [
-      Expanded(
-          child: _academicStatCard('Institution Courses', '$totalCourses Managed',
-              Icons.analytics_outlined, AppColors.inkPrimary)),
-      if (!isMobile) const SizedBox(width: 14),
-      Expanded(
-          child: _academicStatCard('Total Student Seats', '$totalStudents Enrolled',
-              Icons.people_outline_rounded, AppColors.verified)),
-      if (!isMobile) const SizedBox(width: 14),
-      Expanded(
-          child: _academicStatCard('HEC OBE Engine', 'Synchronized',
-              Icons.dns_outlined, AppColors.successGreen)),
-    ];
-    return isMobile
-        ? Column(
-            children: children
-                .whereType<Expanded>()
-                .map((c) => Padding(
-                    padding: const EdgeInsets.only(bottom: 14), child: c.child))
-                .toList())
-        : Row(children: children);
+      final isMobile = MediaQuery.sizeOf(context).width < 560;
+      final c1 = _academicStatCard('Institution Courses', '$totalCourses Managed',
+          Icons.analytics_outlined, AppColors.inkPrimary);
+      final c2 = _academicStatCard('Total Student Seats', '$totalStudents Enrolled',
+          Icons.people_outline_rounded, AppColors.verified);
+      final c3 = _academicStatCard('HEC OBE Engine', 'Synchronized',
+          Icons.dns_outlined, AppColors.successGreen);
+
+      if (isMobile) {
+        return Column(
+          children: [
+            c1,
+            const SizedBox(height: 12),
+            c2,
+            const SizedBox(height: 12),
+            c3,
+          ],
+        );
+      }
+      return Row(
+        children: [
+          Expanded(child: c1),
+          const SizedBox(width: 14),
+          Expanded(child: c2),
+          const SizedBox(width: 14),
+          Expanded(child: c3),
+        ],
+      );
+    } catch (_) {
+      return const SizedBox.shrink();
+    }
   }
 
   Widget _buildProfStats(BuildContext context) {
-    final coursesAsync = ref.watch(courseListProvider);
-    final courses = (coursesAsync.valueOrNull as List?)?.whereType<Map<String, dynamic>>().toList() ?? <Map<String, dynamic>>[];
-    final totalCourses = courses.length;
-    final totalStudents = courses.fold<int>(
-        0, (sum, c) => sum + ((c['enrollment_count'] as num?)?.toInt() ?? 0));
-    final totalAssignments = courses.fold<int>(
-        0, (sum, c) => sum + ((c['assignment_count'] as num?)?.toInt() ?? 0));
+    try {
+      final coursesAsync = ref.watch(courseListProvider);
+      final Object? data = coursesAsync.valueOrNull;
+      final List<dynamic> rawList;
+      if (data != null && data is Map && data['courses'] is List) {
+        rawList = data['courses'] as List<dynamic>;
+      } else if (data != null && data is List) {
+        rawList = data;
+      } else {
+        rawList = const <dynamic>[];
+      }
+      final courses = rawList.whereType<Map<String, dynamic>>().toList();
+      final totalCourses = courses.length;
+      final totalStudents = courses.fold<int>(
+          0, (sum, c) => sum + ((c['enrollment_count'] as num?)?.toInt() ?? 0));
+      final totalAssignments = courses.fold<int>(
+          0, (sum, c) => sum + ((c['assignment_count'] as num?)?.toInt() ?? 0));
 
-    final isMobile = MediaQuery.sizeOf(context).width < 560;
-    final row1 = [
-      Expanded(
-          child: _academicStatCard('Active Courses', '$totalCourses Course${totalCourses == 1 ? '' : 's'}',
-              Icons.menu_book_rounded, AppColors.inkPrimary)),
-      if (!isMobile) const SizedBox(width: 14),
-      Expanded(
-          child: _academicStatCard('Total Enrolled Students', '$totalStudents Student${totalStudents == 1 ? '' : 's'}',
-              Icons.group_outlined, AppColors.verified)),
-    ];
-    final row2 = [
-      Expanded(
-          child: _academicStatCard('Curriculum Assignments', '$totalAssignments Created',
-              Icons.assignment_outlined, AppColors.signal)),
-      if (!isMobile) const SizedBox(width: 14),
-      Expanded(
-          child: _academicStatCard('OBE Attainment Status', 'Active & Grounded',
-              Icons.verified_outlined, AppColors.successGreen)),
-    ];
+      final isMobile = MediaQuery.sizeOf(context).width < 560;
+      final c1 = _academicStatCard('Active Courses', '$totalCourses Course${totalCourses == 1 ? '' : 's'}',
+          Icons.menu_book_rounded, AppColors.inkPrimary);
+      final c2 = _academicStatCard('Total Enrolled Students', '$totalStudents Student${totalStudents == 1 ? '' : 's'}',
+          Icons.group_outlined, AppColors.verified);
+      final c3 = _academicStatCard('Curriculum Assignments', '$totalAssignments Created',
+          Icons.assignment_outlined, AppColors.signal);
+      final c4 = _academicStatCard('OBE Attainment Status', 'Active & Grounded',
+          Icons.verified_outlined, AppColors.successGreen);
 
-    return isMobile
-        ? Column(
-            children: [...row1, ...row2]
-                .whereType<Expanded>()
-                .map((c) => Padding(
-                    padding: const EdgeInsets.only(bottom: 14), child: c.child))
-                .toList())
-        : Column(children: [
-            Row(children: row1),
-            const SizedBox(height: 14),
-            Row(children: row2)
-          ]);
+      if (isMobile) {
+        return Column(
+          children: [
+            c1,
+            const SizedBox(height: 12),
+            c2,
+            const SizedBox(height: 12),
+            c3,
+            const SizedBox(height: 12),
+            c4,
+          ],
+        );
+      }
+
+      return Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: c1),
+              const SizedBox(width: 14),
+              Expanded(child: c2),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(child: c3),
+              const SizedBox(width: 14),
+              Expanded(child: c4),
+            ],
+          ),
+        ],
+      );
+    } catch (_) {
+      return const SizedBox.shrink();
+    }
   }
 
   Widget _buildStudentStats(BuildContext context) {
-    final dashAsync = ref.watch(studentDashboardProvider);
-    final dash = dashAsync.valueOrNull ?? {};
-    final counts = dash['counts'] as Map<String, dynamic>? ?? {};
-    final enrolled = (counts['enrolled_courses'] as num?)?.toInt() ?? 0;
-    final pending = (counts['pending_submissions'] as num?)?.toInt() ?? 0;
-    final graded = (counts['graded_submissions'] as num?)?.toInt() ?? 0;
+    try {
+      final dashAsync = ref.watch(studentDashboardProvider);
+      final dash = dashAsync.valueOrNull ?? {};
+      final stats = (dash['stats'] as Map<String, dynamic>?) ??
+          (dash['counts'] as Map<String, dynamic>?) ??
+          {};
+      final courses = (dash['courses'] as List?)?.whereType<Map<String, dynamic>>().toList() ?? const [];
+      final enrolled = (stats['enrolled_courses'] as num?)?.toInt() ?? courses.length;
+      final pending = (stats['pending'] as num?)?.toInt() ??
+          (stats['pending_submissions'] as num?)?.toInt() ??
+          0;
+      final graded = (stats['graded'] as num?)?.toInt() ??
+          (stats['graded_submissions'] as num?)?.toInt() ??
+          0;
 
-    final isMobile = MediaQuery.sizeOf(context).width < 560;
-    final children = [
-      Expanded(
-          child: _academicStatCard('Enrolled Courses', '$enrolled Active',
-              Icons.menu_book_rounded, AppColors.primaryIndigo)),
-      if (!isMobile) const SizedBox(width: 14),
-      Expanded(
-          child: _academicStatCard('Pending Submissions', '$pending Due',
-              Icons.schedule_rounded, AppColors.pending)),
-      if (!isMobile) const SizedBox(width: 14),
-      Expanded(
-          child: _academicStatCard('Graded & Feedback', '$graded Graded',
-              Icons.chat_bubble_outline_rounded, AppColors.verified)),
-    ];
-    return isMobile
-        ? Column(
-            children: children
-                .whereType<Expanded>()
-                .map((c) => Padding(
-                    padding: const EdgeInsets.only(bottom: 14), child: c.child))
-                .toList())
-        : Row(children: children);
+      final isMobile = MediaQuery.sizeOf(context).width < 560;
+      final c1 = _academicStatCard('Enrolled Courses', '$enrolled Active',
+          Icons.menu_book_rounded, AppColors.inkAccent);
+      final c2 = _academicStatCard('Pending Submissions', '$pending Due',
+          Icons.schedule_rounded, AppColors.pending);
+      final c3 = _academicStatCard('Graded & Feedback', '$graded Graded',
+          Icons.chat_bubble_outline_rounded, AppColors.verified);
+
+      if (isMobile) {
+        return Column(
+          children: [
+            c1,
+            const SizedBox(height: 12),
+            c2,
+            const SizedBox(height: 12),
+            c3,
+          ],
+        );
+      }
+      return Row(
+        children: [
+          Expanded(child: c1),
+          const SizedBox(width: 14),
+          Expanded(child: c2),
+          const SizedBox(width: 14),
+          Expanded(child: c3),
+        ],
+      );
+    } catch (_) {
+      return const SizedBox.shrink();
+    }
   }
 
   Widget _buildTAStats(BuildContext context) {
     final isMobile = MediaQuery.sizeOf(context).width < 560;
-    final children = [
-      Expanded(
-          child: _academicStatCard('Eval Batches Processed', '8 Batches',
-              Icons.batch_prediction_outlined, AppColors.primaryIndigo)),
-      if (!isMobile) const SizedBox(width: 14),
-      Expanded(
-          child: _academicStatCard('Discrepancy vs AI', '2.1%',
-              Icons.compare_arrows_rounded, AppColors.pending)),
-      if (!isMobile) const SizedBox(width: 14),
-      Expanded(
-          child: _academicStatCard('Pending Reviews', '14',
-              Icons.pending_actions_rounded, AppColors.feedbackRed)),
-    ];
-    return isMobile
-        ? Column(
-            children: children
-                .whereType<Expanded>()
-                .map((c) => Padding(
-                    padding: const EdgeInsets.only(bottom: 14), child: c.child))
-                .toList())
-        : Row(children: children);
+    final c1 = _academicStatCard('Eval Batches Processed', '8 Batches',
+        Icons.batch_prediction_outlined, AppColors.inkAccent);
+    final c2 = _academicStatCard('Discrepancy vs AI', '2.1%',
+        Icons.compare_arrows_rounded, AppColors.pending);
+    final c3 = _academicStatCard('Pending Reviews', '14',
+        Icons.pending_actions_rounded, AppColors.feedbackRed);
+
+    if (isMobile) {
+      return Column(
+        children: [
+          c1,
+          const SizedBox(height: 12),
+          c2,
+          const SizedBox(height: 12),
+          c3,
+        ],
+      );
+    }
+    return Row(
+      children: [
+        Expanded(child: c1),
+        const SizedBox(width: 14),
+        Expanded(child: c2),
+        const SizedBox(width: 14),
+        Expanded(child: c3),
+      ],
+    );
   }
 
   Widget _buildSelectionChip({

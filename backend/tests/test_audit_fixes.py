@@ -117,3 +117,26 @@ async def test_submission_deadline_and_graded_guards():
     with pytest.raises(ValueError, match="already been evaluated and graded"):
         await svc.submit(1, 1, data)
 
+
+@pytest.mark.asyncio
+async def test_flutter_static_cache_headers_prevent_stale_bundles():
+    """Verify that main.dart.js and index.html are served with no-cache headers so client browsers receive immediate updates."""
+    from httpx import AsyncClient, ASGITransport
+    from app.main import app
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Check root index.html
+        resp_root = await client.get("/")
+        if resp_root.status_code == 200:
+            cache_root = resp_root.headers.get("cache-control", "")
+            assert "no-cache" in cache_root, f"index.html should have no-cache, got {cache_root}"
+
+        # Check main.dart.js
+        resp_js = await client.get("/main.dart.js")
+        if resp_js.status_code == 200:
+            cache_js = resp_js.headers.get("cache-control", "")
+            assert "no-cache" in cache_js, f"main.dart.js should have no-cache, got {cache_js}"
+            assert "max-age=604800" not in cache_js, "main.dart.js must not have 7-day immutable caching!"
+
+

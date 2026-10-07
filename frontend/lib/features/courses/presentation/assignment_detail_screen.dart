@@ -117,17 +117,18 @@ class _AssignmentDetailScreenState
   }
 
   String _formatSubmissionDate(dynamic raw) {
-    if (raw == null) return '';
-    final str = raw.toString();
+    if (raw == null) return 'Not submitted';
+    final str = raw.toString().trim();
+    if (str.isEmpty) return 'Not submitted';
     try {
       final dt = DateTime.parse(str).toLocal();
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
       final ampm = dt.hour >= 12 ? 'PM' : 'AM';
       final minute = dt.minute.toString().padLeft(2, '0');
-      return '${months[dt.month - 1]} ${dt.day}, $hour:$minute $ampm';
+      return '${months[dt.month - 1]} ${dt.day}, ${dt.year} • $hour:$minute $ampm';
     } catch (_) {
-      return str.length > 10 ? str.substring(0, 10) : str;
+      return str.length > 16 ? str.substring(0, 16) : str;
     }
   }
 
@@ -1061,16 +1062,19 @@ if (aiEvaluation != null &&
                                   children: [
                                     CircleAvatar(
                                       radius: 20,
-                                      backgroundColor: AppColors.bgSurface,
+                                      backgroundColor: AppColors.surfaceHigh,
                                       child: Text(
                                         (sub['student_name'] ?? 'S')
                                             .toString()
+                                            .trim()
                                             .split(' ')
                                             .map((n) =>
                                                 n.isNotEmpty ? n[0] : '')
-                                            .join(),
-                                        style: GoogleFonts.inter(
-                                          fontSize: 14,
+                                            .take(2)
+                                            .join()
+                                            .toUpperCase(),
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 13,
                                           fontWeight: FontWeight.w600,
                                           color: AppColors.inkPrimary,
                                         ),
@@ -1087,12 +1091,17 @@ if (aiEvaluation != null &&
                                           Text(
                                               sub['student_name'] ??
                                                   'Student',
-                                              style: GoogleFonts.inter(
-                                                  fontSize: 15,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: GoogleFonts.dmSans(
+                                                  fontSize: 14,
                                                   fontWeight: FontWeight.w600,
                                                   color: AppColors.inkPrimary)),
+                                          const SizedBox(height: 2),
                                           Text(sub['student_email'] ?? '',
-                                              style: GoogleFonts.inter(
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: GoogleFonts.dmSans(
                                                   fontSize: 12,
                                                   color:
                                                       AppColors.inkSecondary)),
@@ -1118,7 +1127,7 @@ if (aiEvaluation != null &&
                                                   isFlagged
                                                       ? '⚠️ Flagged: $switches switches'
                                                       : '🛡️ Clean ($switches switches)',
-                                                  style: GoogleFonts.inter(
+                                                  style: GoogleFonts.dmSans(
                                                     fontSize: 11,
                                                     fontWeight: FontWeight.w600,
                                                     color: isFlagged ? AppColors.dangerRose : AppColors.successGreen,
@@ -1130,28 +1139,53 @@ if (aiEvaluation != null &&
                                         ],
                                       ),
                                     ),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                                      child: Text(
-                                        _formatSubmissionDate(sub['submitted_at']),
-                                        style: GoogleFonts.inter(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: AppColors.inkSecondary),
+                                    const SizedBox(width: 12),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surface,
+                                        borderRadius: BorderRadius.circular(AppRadius.r4),
+                                        border: Border.all(color: AppColors.rule, width: 0.8),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.schedule_rounded,
+                                              size: 13,
+                                              color: AppColors.inkGhost),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            _formatSubmissionDate(sub['submitted_at']),
+                                            style: GoogleFonts.dmSans(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                                color: AppColors.inkSecondary),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    // Manual Grade Dialog Trigger
-                                    IconButton(
-                                      tooltip: 'Review & Grade with Rubric',
-                                      icon: const Icon(
-                                          Icons.rate_review_outlined,
-                                          color: AppColors.inkPrimary,
-                                          size: 20),
-                                      onPressed: () =>
-                                          _openGradingDialog(sub),
+                                    const SizedBox(width: 12),
+                                    OutlinedButton.icon(
+                                      onPressed: () => _openGradingDialog(sub),
+                                      icon: const Icon(Icons.rate_review_outlined,
+                                          size: 15,
+                                          color: AppColors.inkPrimary),
+                                      label: Text(
+                                        'Grade',
+                                        style: GoogleFonts.dmSans(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.inkPrimary),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        side: const BorderSide(color: AppColors.rule, width: 0.8),
+                                        backgroundColor: AppColors.surface,
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        minimumSize: const Size(0, 32),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                      ),
                                     ),
-                                    // AI Auto-Grade Button
+                                    const SizedBox(width: 6),
                                     IconButton(
                                       tooltip:
                                           'Auto-grade with AI (DeepSeek-R1)',
@@ -1165,7 +1199,7 @@ if (aiEvaluation != null &&
                                                       color: AppColors.signal))
                                           : const Icon(Icons.auto_awesome,
                                               color: AppColors.signal,
-                                              size: 20),
+                                              size: 18),
                                       onPressed: isAiGrading
                                           ? null
                                           : () =>

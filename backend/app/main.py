@@ -209,9 +209,9 @@ if STATIC_DIR.exists():
             from fastapi import HTTPException
             raise HTTPException(status_code=403, detail="Access denied.")
 
-        # Cache static bundle assets (JS, WASM, fonts, images) for high navigation performance
+        # Cache immutable static assets (fonts, images) for performance, but NEVER cache code bundles
         is_immutable = file_path.suffix.lower() in {
-            ".js", ".wasm", ".png", ".jpg", ".jpeg", ".svg", ".ttf", ".woff", ".woff2", ".css", ".ico"
+            ".png", ".jpg", ".jpeg", ".svg", ".ttf", ".woff", ".woff2", ".otf", ".ico"
         }
         if is_immutable:
             headers = {
