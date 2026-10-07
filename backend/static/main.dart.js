@@ -33046,7 +33046,7 @@ _.z=_.y=null
 _.Q=!1
 _.as=a
 _.at=!1
-_.ch=_.ay=_.ax=0
+_.ay=_.ax=0
 _.CW=!1
 _.cx=b
 _.cy=c
@@ -116543,7 +116543,8 @@ return A.m(new A.cc(k).vN(o.a.d),$async$hE)
 case 19:i=a2
 k=J.kV(i,new A.aI7())
 h=A.a6(k,!0,k.$ti.i("y.E"))
-o.ch=J.b3(h)!==0?J.b3(h):J.b3(i)
+if(J.b3(h)!==0)J.b3(h)
+else J.b3(i)
 q=3
 s=18
 break
@@ -117087,17 +117088,15 @@ case 1:return A.q(p,r)}})
 return A.t($async$$0,r)},
 $S:2}
 A.aIC.prototype={
-$1(a){var s,r,q,p,o,n=null,m=this.a,l=J.b3(m.as),k=m.ax
-k=k>0?k:J.kV(m.as,new A.aIw()).gq(0)
-s=m.ay
-s=s>0?s:J.kV(m.as,new A.aIx()).gq(0)
-r=J.kV(m.as,new A.aIy())
-q=r.$ti.i("eU<1,C>")
-p=A.a6(new A.eU(r,new A.aIz(),q),!0,q.i("y.E"))
-o=p.length!==0?B.d.an(B.b.kt(p,new A.aIA())/p.length,1)+"%":"0.0%"
-m=m.ch
-r=""+l
-return A.fl(B.aa,A.a([A.bG(A.axr("Submissions",m>0?r+"/"+m:r),n,200),A.bG(A.axr("Pending Review",""+k),n,200),A.bG(A.axr("Graded",""+s),n,200),A.bG(A.axr("Average Score",o),n,200)],t.p),B.bp,16,16)},
+$1(a){var s,r,q,p,o=null,n=this.a,m=J.b3(n.as),l=n.ax
+l=l>0?l:J.kV(n.as,new A.aIw()).gq(0)
+s=n.ay
+s=s>0?s:J.kV(n.as,new A.aIx()).gq(0)
+n=J.kV(n.as,new A.aIy())
+r=n.$ti.i("eU<1,C>")
+q=A.a6(new A.eU(n,new A.aIz(),r),!0,r.i("y.E"))
+p=q.length!==0?B.d.an(B.b.kt(q,new A.aIA())/q.length,1)+"%":"0.0%"
+return A.fl(B.aa,A.a([A.bG(A.axr("Submissions",""+m),o,200),A.bG(A.axr("Pending Review",""+l),o,200),A.bG(A.axr("Graded",""+s),o,200),A.bG(A.axr("Average Score",p),o,200)],t.p),B.bp,16,16)},
 $S:785}
 A.aIw.prototype={
 $1(a){return J.c(J.P(a,"status"),"pending")},

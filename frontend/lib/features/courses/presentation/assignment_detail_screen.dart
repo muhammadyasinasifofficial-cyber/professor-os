@@ -794,9 +794,7 @@ if (aiEvaluation != null &&
                       SizedBox(
                           width: 200,
                           child: ProfStatCard(
-                              value: _enrolledStudentCount > 0
-                                  ? '$totalCount/$_enrolledStudentCount'
-                                  : '$totalCount',
+                              value: '$totalCount',
                               label: 'Submissions')),
                       SizedBox(
                           width: 200,
