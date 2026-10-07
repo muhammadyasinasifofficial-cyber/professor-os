@@ -436,3 +436,86 @@ def ingest_course_document_task(
     finally:
         if temporary_path:
             temporary_path.unlink(missing_ok=True)
+
+
+def extract_text_from_submission_file(file_path: str, max_chars: int = 25000) -> str:
+    """Extracts raw text/markdown from student submission documents (.pdf, .docx, .pptx, code, text)
+
+    for AI rubric-anchored grading.
+    """
+    path_obj = Path(file_path)
+    if not path_obj.exists():
+        return ""
+
+    ext = path_obj.suffix.lower()
+    text = ""
+
+    # 1. Plain text and source code files
+    code_exts = {
+        ".txt", ".md", ".py", ".java", ".c", ".cpp", ".cc", ".cxx", ".h", ".hpp",
+        ".cs", ".js", ".ts", ".jsx", ".tsx", ".html", ".css", ".sql", ".sh",
+        ".bash", ".json", ".yaml", ".yml", ".dart", ".rb", ".go", ".rs", ".php"
+    }
+    if ext in code_exts:
+        try:
+            text = path_obj.read_text(encoding="utf-8", errors="replace")
+        except Exception as e:
+            logger.warning("Failed reading text file %s: %s", path_obj.name, e)
+
+    # 2. PDF Documents
+    elif ext == ".pdf":
+        try:
+            import fitz  # PyMuPDF
+            doc = fitz.open(str(path_obj))
+            pages = []
+            for i, page in enumerate(doc):
+                page_text = page.get_text().strip()
+                if page_text:
+                    pages.append(f"--- [Page {i + 1}] ---\n{page_text}")
+            doc.close()
+            if pages:
+                text = "\n\n".join(pages)
+        except Exception as fitz_err:
+            logger.warning("PyMuPDF failed on %s (%s), falling back to pypdf...", path_obj.name, fitz_err)
+            try:
+                import pypdf
+                reader = pypdf.PdfReader(str(path_obj))
+                pages = []
+                for i, page in enumerate(reader.pages):
+                    ptxt = page.extract_text() or ""
+                    if ptxt.strip():
+                        pages.append(f"--- [Page {i + 1}] ---\n{ptxt.strip()}")
+                if pages:
+                    text = "\n\n".join(pages)
+            except Exception as pypdf_err:
+                logger.error("pypdf also failed on %s: %s", path_obj.name, pypdf_err)
+
+    # 3. Microsoft Word (.docx)
+    elif ext == ".docx":
+        try:
+            import docx
+            doc = docx.Document(str(path_obj))
+            paras = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+            for table in doc.tables:
+                for row in table.rows:
+                    cells = [c.text.strip() for c in row.cells if c.text.strip()]
+                    if cells:
+                        paras.append(" | ".join(cells))
+            if paras:
+                text = "\n\n".join(paras)
+        except Exception as docx_err:
+            logger.error("python-docx failed on %s: %s", path_obj.name, docx_err)
+
+    # 4. Fallback: Try DoclingPipeline if available
+    if not text and ext in [".pdf", ".docx", ".pptx"]:
+        try:
+            pipeline = DoclingPipeline(course_id=0)
+            text = pipeline.parse_document_to_markdown(str(path_obj))
+        except Exception:
+            pass
+
+    clean_text = (text or "").strip()
+    if clean_text and len(clean_text) > max_chars:
+        clean_text = clean_text[:max_chars] + f"\n\n[... Note: Document truncated at {max_chars} characters for AI context budget ...]"
+
+    return clean_text

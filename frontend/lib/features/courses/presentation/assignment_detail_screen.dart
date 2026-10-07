@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../core/network/dio_client.dart';
+import '../../../core/network/api_constants.dart';
 import '../../../core/utils/error_parser.dart';
 import '../../../shared/journal_ui/journal_components.dart';
 import '../../../shared/widgets/prof_badge.dart';
@@ -49,8 +52,35 @@ class _AssignmentDetailScreenState
   bool _submissionsLoading = false;
   int _pendingCount = 0;
   int _gradedCount = 0;
+  int _enrolledStudentCount = 0;
   bool _batchGrading = false;
   final Set<int> _gradingSubmissionIds = {};
+  Map<int, Map<String, dynamic>> _examAttemptsByStudent = {};
+
+  Future<void> _exportGradesCsv() async {
+    try {
+      final token = await DioClient.getAccessToken();
+      final url = Uri.parse(
+          '${ApiConstants.baseUrl}${ApiConstants.assignmentExportCsv(widget.courseId, widget.assignmentId)}?token=$token');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Could not trigger CSV download.'),
+            backgroundColor: AppColors.dangerRose,
+          ));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Export error: ${ErrorParser.parse(e)}'),
+          backgroundColor: AppColors.dangerRose,
+        ));
+      }
+    }
+  }
 
   // Submission form state
   String? _selectedFileName;
@@ -58,6 +88,21 @@ class _AssignmentDetailScreenState
   final _textSubmissionCtrl = TextEditingController();
   final _codeSubmissionCtrl = TextEditingController();
   int? _mcqSelectedValue;
+
+  String _formatSubmissionDate(dynamic raw) {
+    if (raw == null) return '';
+    final str = raw.toString();
+    try {
+      final dt = DateTime.parse(str).toLocal();
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+      final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+      final minute = dt.minute.toString().padLeft(2, '0');
+      return '${months[dt.month - 1]} ${dt.day}, $hour:$minute $ampm';
+    } catch (_) {
+      return str.length > 10 ? str.substring(0, 10) : str;
+    }
+  }
 
   Future<void> _runBatchAiGrading() async {
     final pending = _submissions.where((s) => s['status'] == 'pending').length;
@@ -331,8 +376,8 @@ class _AssignmentDetailScreenState
                               ),
                             ),
                           ],
-                          if (aiEvaluation != null &&
-                              aiEvaluation!['criteria'] is List) ...[
+if (aiEvaluation != null &&
+                                  aiEvaluation!['criteria_evaluations'] is List) ...[
                             const SizedBox(height: 10),
                             const Divider(height: 1),
                             const SizedBox(height: 8),
@@ -341,38 +386,114 @@ class _AssignmentDetailScreenState
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700)),
                             const SizedBox(height: 6),
-                            ...((aiEvaluation!['criteria'] as List)
+                            ...((aiEvaluation!['criteria_evaluations'] as List)
                                 .map((crit) => Padding(
-                                      padding:
-                                          const EdgeInsets.only(bottom: 6),
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Icon(Icons.check_circle_outline,
-                                              size: 14,
-                                              color: AppColors.successGreen),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              '${crit['criterion_name']}: ${crit['score_awarded']}/${crit['max_score']} pts - ${crit['rationale'] ?? ''}',
-                                              style: GoogleFonts.inter(
-                                                  fontSize: 11,
-                                                  color:
-                                                      AppColors.textSecondary),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ))),
+                              padding:
+                                  const EdgeInsets.only(bottom: 6),
+                              child: Row(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  const Icon(Icons.check_circle_outline,
+                                      size: 14,
+                                      color: AppColors.successGreen),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      '${crit['criterion_name']}: ${crit['score_awarded']}/${crit['max_score']} pts - ${crit['rationale'] ?? ''}',
+                                      style: GoogleFonts.inter(
+                                          fontSize: 11,
+                                          color:
+                                              AppColors.textSecondary),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ))),
                           ],
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    const Divider(),
-                    const SizedBox(height: 12),
-                    TextFormField(
+              if (aiEvaluation != null) ...[
+                const SizedBox(height: 12),
+                // XAI Summary Section
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.bgPage,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.primaryIndigo.withOpacity(0.2)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Percentage and needs review indicator
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Score: ${aiEvaluation!['percentage']?.toStringAsFixed(1) ?? 'N/A'}%',
+                              style: GoogleFonts.jetBrainsMono(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.inkPrimary),
+                            ),
+                          ),
+                          if (aiEvaluation!['needs_review'] == true) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.accentAmber.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: AppColors.accentAmber),
+                              ),
+                              child: Text(
+                                '📌 Needs Review',
+                                style: GoogleFonts.inter(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.accentAmber),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Student-friendly rationale summary
+                      Text(
+                        _buildRationaleSummary(aiEvaluation!),
+                        style: GoogleFonts.inter(
+                            fontSize: 12,
+                            height: 1.4,
+                            color: AppColors.inkPrimary),
+                      ),
+                      const SizedBox(height: 8),
+                      // Evaluator info
+                      Row(
+                        children: [
+                          const Icon(Icons.info_outline,
+                              size: 14, color: AppColors.inkSecondary),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              'Evaluated by: ${aiEvaluation!['evaluator_model'] ?? 'AI Model'}',
+                              style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: AppColors.inkSecondary),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 12),
+              TextFormField(
                       controller: scoreCtrl,
                       keyboardType: const TextInputType.numberWithOptions(
                           decimal: true),
@@ -494,6 +615,24 @@ class _AssignmentDetailScreenState
         setState(() => _submissionsLoading = true);
         final res = await CourseRepository()
             .listSubmissions(widget.courseId, widget.assignmentId);
+        try {
+          final attempts = await CourseRepository()
+              .listExamAttempts(widget.courseId, widget.assignmentId);
+          _examAttemptsByStudent = {
+            for (final a in attempts)
+              if (a is Map<String, dynamic> && a['student_id'] != null)
+                (a['student_id'] as int): a
+          };
+        } catch (_) {}
+        try {
+          final enrollments =
+              await CourseRepository().listEnrollments(widget.courseId);
+          final studentList = enrollments
+              .where((e) => (e['role'] ?? 'student') == 'student')
+              .toList();
+          _enrolledStudentCount =
+              studentList.isNotEmpty ? studentList.length : enrollments.length;
+        } catch (_) {}
         if (mounted) {
           setState(() {
             _submissions = (res['submissions'] as List<dynamic>)
@@ -609,11 +748,8 @@ class _AssignmentDetailScreenState
               Builder(
                 builder: (context) {
                   final totalCount = _submissions.length;
-                  final pendingCount = _submissions
-                      .where((s) => s['status'] == 'pending')
-                      .length;
-                  final gradedCount =
-                      _submissions.where((s) => s['status'] == 'graded').length;
+                  final pendingCount = _pendingCount > 0 ? _pendingCount : _submissions.where((s) => s['status'] == 'pending').length;
+                  final gradedCount = _gradedCount > 0 ? _gradedCount : _submissions.where((s) => s['status'] == 'graded').length;
                   final gradedScores = _submissions
                       .where(
                           (s) => s['status'] == 'graded' && s['score'] != null)
@@ -630,7 +766,10 @@ class _AssignmentDetailScreenState
                       SizedBox(
                           width: 200,
                           child: ProfStatCard(
-                              value: '$totalCount/180', label: 'Submissions')),
+                              value: _enrolledStudentCount > 0
+                                  ? '$totalCount/$_enrolledStudentCount'
+                                  : '$totalCount',
+                              label: 'Submissions')),
                       SizedBox(
                           width: 200,
                           child: ProfStatCard(
@@ -766,16 +905,49 @@ class _AssignmentDetailScreenState
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Submissions (${_submissions.length})',
-                  style: GoogleFonts.outfit(
-                      fontSize: 20, fontWeight: FontWeight.w600)),
-              if (pendingCount > 0)
-                FilledButton.icon(
+              Row(
+                children: [
+                  Text('Submissions (${_submissions.length})',
+                      style: GoogleFonts.outfit(
+                          fontSize: 20, fontWeight: FontWeight.w600)),
+                  if (_submissionsLoading) ...[
+                    const SizedBox(width: 10),
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ],
+                ],
+              ),
+              Wrap(
+                spacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                    ),
+                    icon: const Icon(Icons.download_rounded, size: 16),
+                    label: Text(
+                      'Export CSV',
+                      style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600),
+                    ),
+                    onPressed: _exportGradesCsv,
+                  ),
+                  if (pendingCount > 0)
+                    FilledButton.icon(
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.signal,
+                    backgroundColor: const Color(0xFF2F5D8A),
                     foregroundColor: Colors.white,
+                    elevation: 1,
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                   icon: _batchGrading
                       ? const SizedBox(
@@ -783,12 +955,20 @@ class _AssignmentDetailScreenState
                           height: 14,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.auto_awesome, size: 16),
-                  label: Text(_batchGrading
-                      ? 'AI Batch Grading...'
-                      : 'Batch AI Grade ($pendingCount Pending)'),
+                      : const Icon(Icons.auto_awesome, size: 16, color: Colors.white),
+                  label: Text(
+                    _batchGrading
+                        ? 'AI Batch Grading...'
+                        : 'Batch AI Grade ($pendingCount Pending)',
+                    style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white),
+                  ),
                   onPressed: _batchGrading ? null : _runBatchAiGrading,
                 ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -816,8 +996,8 @@ class _AssignmentDetailScreenState
                 return Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: () {
-                      Navigator.of(context).push(MaterialPageRoute(
+                    onTap: () async {
+                      await Navigator.of(context).push(MaterialPageRoute(
                         builder: (context) => SpeedGraderScreen(
                           submissions: _submissions,
                           initialIndex: index,
@@ -829,6 +1009,7 @@ class _AssignmentDetailScreenState
                           },
                         ),
                       ));
+                      await _loadSubmissions();
                     },
                     child: IntrinsicHeight(
                       child: Container(
@@ -888,13 +1069,50 @@ class _AssignmentDetailScreenState
                                                   fontSize: 12,
                                                   color:
                                                       AppColors.inkSecondary)),
+                                          if (_examAttemptsByStudent.containsKey(sub['student_id'] as int?)) ...[
+                                            const SizedBox(height: 4),
+                                            Builder(builder: (ctx) {
+                                              final att = _examAttemptsByStudent[sub['student_id'] as int?];
+                                              final isFlagged = att?['is_flagged'] == true;
+                                              final switches = att?['tab_switch_count'] ?? 0;
+                                              return Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: isFlagged
+                                                      ? AppColors.dangerRose.withOpacity(0.12)
+                                                      : AppColors.successGreen.withOpacity(0.12),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                  border: Border.all(
+                                                    color: isFlagged ? AppColors.dangerRose : AppColors.successGreen,
+                                                    width: 0.8,
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  isFlagged
+                                                      ? '⚠️ Flagged: $switches switches'
+                                                      : '🛡️ Clean ($switches switches)',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: isFlagged ? AppColors.dangerRose : AppColors.successGreen,
+                                                  ),
+                                                ),
+                                              );
+                                            }),
+                                          ],
                                         ],
                                       ),
                                     ),
-                                    Text(sub['submitted_at'] ?? '',
-                                        style: GoogleFonts.jetBrainsMono(
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                                      child: Text(
+                                        _formatSubmissionDate(sub['submitted_at']),
+                                        style: GoogleFonts.inter(
                                             fontSize: 12,
-                                            color: AppColors.inkSecondary)),
+                                            fontWeight: FontWeight.w500,
+                                            color: AppColors.inkSecondary),
+                                      ),
+                                    ),
                                     const SizedBox(width: 8),
                                     // Manual Grade Dialog Trigger
                                     IconButton(
@@ -1010,8 +1228,10 @@ class _AssignmentDetailScreenState
             ),
           ],
         ),
-      );
-    }
+);
+  }
+
+
 
     return ProfCard(
       child: Column(
@@ -1541,6 +1761,68 @@ class _AssignmentDetailScreenState
       ),
     );
   }
+
+
+  /// Builds a student-friendly summary of the AI grading rationale.
+  String _buildRationaleSummary(Map<String, dynamic> aiEvaluation) {
+    final criteria =
+        aiEvaluation['criteria_evaluations'] as List?;
+    final diagnostic = aiEvaluation['diagnostic_reasoning'] as String?;
+    final percentage = aiEvaluation['percentage'] as num?;
+    
+    final positives = <String>[];
+    final improvements = <String>[];
+    
+    // Simple heuristic to extract key points from diagnostic reasoning
+    if (diagnostic != null && diagnostic.isNotEmpty) {
+      final lines = diagnostic.split('.').where((l) => l.isNotEmpty).toList();
+      for (final line in lines) {
+        final lower = line.toLowerCase();
+        // Sentences with positive words → positives
+        if (lower.contains('correct') || lower.contains('good') || 
+            lower.contains('well') || lower.contains('success')) {
+          positives.add(line.trim());
+        }
+        // Sentences with improvement words → improvements
+        else if (lower.contains('however') || lower.contains('issue') || 
+                 lower.contains('problem') || lower.contains('improve') ||
+                 lower.contains('missing') || lower.contains('error')) {
+          improvements.add(line.trim());
+        }
+      }
+    }
+    
+    // Fallback: use first few criteria rationales if no diagnostic available
+    if (positives.isEmpty && improvements.isEmpty && criteria != null) {
+      for (final crit in criteria.take(3)) {
+        final rationale = crit['rationale'] ?? '';
+        if (rationale.isNotEmpty) {
+          final rLower = rationale.toLowerCase();
+          if (rLower.contains('correct') || rLower.contains('good')) {
+            positives.add(rationale);
+          } else if (rLower.contains('issue') || rLower.contains('problem')) {
+            improvements.add(rationale);
+          }
+        }
+      }
+    }
+    
+    final result = <String>[];
+    if (positives.isNotEmpty) {
+      result.add('✅ **What was done well:**');
+      result.addAll(positives.map((p) => '• $p').take(3));
+    }
+    if (improvements.isNotEmpty) {
+      result.add('⚠️ **Area for improvement:**');
+      result.addAll(improvements.map((i) => '• $i').take(3));
+    }
+    // Always show percentage
+    if (percentage != null) {
+      result.add('📊 **Score:** ${percentage.toStringAsFixed(1)}%');
+    }
+    
+    return result.join('\n');
+  }
 }
 
 class SpeedGraderScreen extends ConsumerStatefulWidget {
@@ -1569,6 +1851,9 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
   double? _aiSuggestedScore;
   bool _isAiAccepted = false;
   String _manualScoreBeforeAi = '';
+  String _initialScore = '';
+  String _initialFeedback = '';
+  bool _savingCurrent = false;
 
   @override
   void initState() {
@@ -1581,25 +1866,120 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
     final sub = widget.submissions[_currentIndex];
     _scoreCtrl.text = sub['score']?.toString() ?? '';
     _feedbackCtrl.text = sub['feedback'] ?? '';
+    _initialScore = _scoreCtrl.text;
+    _initialFeedback = _feedbackCtrl.text;
     _selectedLevels.clear();
     _aiSuggestedScore = null;
     _isAiAccepted = false;
   }
 
-  void _onSaveCurrent() {
-    final score = double.tryParse(_scoreCtrl.text);
-    final feedback = _feedbackCtrl.text;
-    final updated =
-        Map<String, dynamic>.from(widget.submissions[_currentIndex]);
-    updated['score'] = score;
-    updated['feedback'] = feedback;
-    updated['status'] = 'graded';
+  Future<bool> _checkUnsavedAndProceed() async {
+    if (_scoreCtrl.text != _initialScore || _feedbackCtrl.text != _initialFeedback) {
+      final shouldSave = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Unsaved Changes'),
+          content: const Text(
+              'You have modified the grade or qualitative feedback. Would you like to save to the database before moving to the next student?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Discard'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Save & Continue'),
+            ),
+          ],
+        ),
+      );
+      if (shouldSave == true) {
+        await _onSaveCurrent();
+        return true;
+      } else if (shouldSave == false) {
+        return true;
+      }
+      return false;
+    }
+    return true;
+  }
 
-    widget.onSave(_currentIndex, updated);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('Grade and feedback saved successfully!'),
-      backgroundColor: AppColors.statusPassInk,
-    ));
+  Future<void> _onSaveCurrent() async {
+    final score = double.tryParse(_scoreCtrl.text);
+    if (score == null && _scoreCtrl.text.trim().isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Please enter a valid numeric score.'),
+        backgroundColor: AppColors.dangerRose,
+      ));
+      return;
+    }
+    final feedback = _feedbackCtrl.text.trim();
+    final sub = widget.submissions[_currentIndex];
+    final sid = sub['id'] as int;
+
+    setState(() => _savingCurrent = true);
+    try {
+      if (score != null) {
+        await CourseRepository().gradeSubmission(
+          sid,
+          score,
+          feedback.isEmpty ? null : feedback,
+        );
+      }
+      final updated = Map<String, dynamic>.from(sub);
+      updated['score'] = score;
+      updated['feedback'] = feedback;
+      if (score != null) {
+        updated['status'] = 'graded';
+      }
+
+      widget.onSave(_currentIndex, updated);
+      _initialScore = _scoreCtrl.text;
+      _initialFeedback = _feedbackCtrl.text;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Grade and feedback saved to database successfully!'),
+          backgroundColor: AppColors.successGreen,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Failed to save grade: ${ErrorParser.parse(e)}'),
+          backgroundColor: AppColors.dangerRose,
+        ));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _savingCurrent = false);
+      }
+    }
+  }
+
+  Future<void> _downloadSubmissionFile(int submissionId, String filename) async {
+    try {
+      final token = await DioClient.getAccessToken();
+      final url = Uri.parse(
+          '${ApiConstants.baseUrl}/submissions/$submissionId/file?token=$token');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Could not trigger download for $filename'),
+            backgroundColor: AppColors.dangerRose,
+          ));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Download failed: ${ErrorParser.parse(e)}'),
+          backgroundColor: AppColors.dangerRose,
+        ));
+      }
+    }
   }
 
   bool _aiGrading = false;
@@ -1720,11 +2100,14 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
                 IconButton(
                   icon: const Icon(Icons.arrow_back_ios_new_rounded),
                   onPressed: _currentIndex > 0
-                      ? () {
-                          setState(() {
-                            _currentIndex--;
-                            _loadSubmission();
-                          });
+                      ? () async {
+                          final canProceed = await _checkUnsavedAndProceed();
+                          if (canProceed && mounted) {
+                            setState(() {
+                              _currentIndex--;
+                              _loadSubmission();
+                            });
+                          }
                         }
                       : null,
                 ),
@@ -1755,11 +2138,14 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
                 IconButton(
                   icon: const Icon(Icons.arrow_forward_ios_rounded),
                   onPressed: _currentIndex < widget.submissions.length - 1
-                      ? () {
-                          setState(() {
-                            _currentIndex++;
-                            _loadSubmission();
-                          });
+                      ? () async {
+                          final canProceed = await _checkUnsavedAndProceed();
+                          if (canProceed && mounted) {
+                            setState(() {
+                              _currentIndex++;
+                              _loadSubmission();
+                            });
+                          }
                         }
                       : null,
                 ),
@@ -1805,7 +2191,10 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
                                           color: AppColors.textPrimary)),
                                   const SizedBox(height: 16),
                                   ElevatedButton.icon(
-                                    onPressed: () {},
+                                    onPressed: () => _downloadSubmissionFile(
+                                      sub['id'] as int,
+                                      sub['file_name'] ?? sub['content'] ?? 'submission_file',
+                                    ),
                                     icon: const Icon(Icons.download),
                                     label:
                                         const Text('Download Submission File'),
@@ -2112,8 +2501,9 @@ class _SpeedGraderScreenState extends ConsumerState<SpeedGraderScreen> {
 
                       PrimaryButton(
                         label: 'Save Grade & Comments',
+                        isLoading: _savingCurrent,
                         width: double.infinity,
-                        onPressed: _onSaveCurrent,
+                        onPressed: _savingCurrent ? null : _onSaveCurrent,
                       ),
                     ],
                   ),

@@ -42,7 +42,10 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen>
     final isProf = role == 'professor' || role == 'admin';
     _tabCtrl = TabController(length: isProf ? 4 : 2, vsync: this);
     _tabCtrl.addListener(() {
-      if (mounted) setState(() {});
+      // Avoid rebuilding entire screen 60fps while tab is animating; only rebuild when settled
+      if (!_tabCtrl.indexIsChanging && mounted) {
+        setState(() {});
+      }
     });
   }
 
@@ -50,6 +53,62 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen>
   void dispose() {
     _tabCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _downloadHecDossier() async {
+    try {
+      final token = await DioClient.getAccessToken();
+      final url = Uri.parse(
+        '${ApiConstants.baseUrl}${ApiConstants.hecDossier(widget.courseId)}?token=$token',
+      );
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          JournalToastManager.show(
+            context,
+            'Could not trigger HEC Dossier download',
+            status: ToastStatus.critical,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        JournalToastManager.show(
+          context,
+          'Dossier download error: ${ErrorParser.parse(e)}',
+          status: ToastStatus.critical,
+        );
+      }
+    }
+  }
+
+  Future<void> _exportCourseGradebookCsv() async {
+    try {
+      final token = await DioClient.getAccessToken();
+      final url = Uri.parse(
+        '${ApiConstants.baseUrl}${ApiConstants.courseGradebookCsv(widget.courseId)}?token=$token',
+      );
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          JournalToastManager.show(
+            context,
+            'Could not trigger CSV export',
+            status: ToastStatus.critical,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        JournalToastManager.show(
+          context,
+          'CSV export error: ${ErrorParser.parse(e)}',
+          status: ToastStatus.critical,
+        );
+      }
+    }
   }
 
   Future<void> _openAIQuizAndOBE([String? courseTitle]) async {
@@ -120,6 +179,40 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen>
             ),
           ),
           if (isProf) ...[
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
+                label: isNarrow
+                    ? const SizedBox.shrink()
+                    : const Text('HEC Dossier'),
+                onPressed: _downloadHecDossier,
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: AppColors.surfaceMid,
+                  foregroundColor: AppColors.inkPrimary,
+                  side: const BorderSide(color: AppColors.ruleStrong),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.file_download_outlined, size: 16),
+                label: isNarrow
+                    ? const SizedBox.shrink()
+                    : const Text('Gradebook CSV'),
+                onPressed: _exportCourseGradebookCsv,
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: AppColors.surfaceMid,
+                  foregroundColor: AppColors.inkPrimary,
+                  side: const BorderSide(color: AppColors.ruleStrong),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                ),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: OutlinedButton.icon(
@@ -932,6 +1025,148 @@ class _SettingsTab extends ConsumerWidget {
   final Map<String, dynamic> course;
   const _SettingsTab({required this.course});
 
+  Future<void> _showAddCloDialog(BuildContext context, WidgetRef ref, int courseId) async {
+    final codeCtrl = TextEditingController(text: 'CLO-');
+    final descCtrl = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Add Course Learning Outcome', style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: codeCtrl,
+              decoration: const InputDecoration(labelText: 'CLO Code', hintText: 'e.g. CLO-2'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descCtrl,
+              maxLines: 2,
+              decoration: const InputDecoration(labelText: 'Description', hintText: 'e.g. Design relational database schemas'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final code = codeCtrl.text.trim();
+              final desc = descCtrl.text.trim();
+              if (code.isEmpty || desc.isEmpty) return;
+              try {
+                await CourseRepository().createClo(courseId, code, desc);
+                ref.invalidate(courseClosProvider(courseId));
+                if (context.mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('✓ Learning outcome added.'),
+                    backgroundColor: AppColors.successGreen,
+                  ));
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(ErrorParser.parse(e)),
+                    backgroundColor: AppColors.dangerRose,
+                  ));
+                }
+              }
+            },
+            child: const Text('Add CLO'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteClo(
+      BuildContext context, WidgetRef ref, int courseId, int cloId, String code) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete $code', style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+        content: Text('Are you sure you want to delete outcome "$code"? Linked assessment metrics may be unlinked.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.statusCritical, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      try {
+        await CourseRepository().deleteClo(courseId, cloId);
+        ref.invalidate(courseClosProvider(courseId));
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('✓ Outcome $code deleted.'),
+            backgroundColor: AppColors.successGreen,
+          ));
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(ErrorParser.parse(e)),
+            backgroundColor: AppColors.dangerRose,
+          ));
+        }
+      }
+    }
+  }
+
+  Future<void> _downloadHecDossierStatic(BuildContext context, int courseId) async {
+    try {
+      final token = await DioClient.getAccessToken();
+      final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.hecDossier(courseId)}?token=$token');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Could not trigger HEC Dossier download.'),
+            backgroundColor: AppColors.dangerRose,
+          ));
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(ErrorParser.parse(e)),
+          backgroundColor: AppColors.dangerRose,
+        ));
+      }
+    }
+  }
+
+  Future<void> _downloadCourseGradebookStatic(BuildContext context, int courseId) async {
+    try {
+      final token = await DioClient.getAccessToken();
+      final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.courseGradebookCsv(courseId)}?token=$token');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Could not trigger Gradebook CSV download.'),
+            backgroundColor: AppColors.dangerRose,
+          ));
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(ErrorParser.parse(e)),
+          backgroundColor: AppColors.dangerRose,
+        ));
+      }
+    }
+  }
+
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final role = ref.watch(authProvider).valueOrNull?['role'] as String?;
@@ -979,6 +1214,151 @@ class _SettingsTab extends ConsumerWidget {
                       assignment: course['assignment_weight'] ?? 20,
                       midterm: course['midterm_weight'] ?? 20,
                       finalExam: course['final_weight'] ?? 40,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Course Learning Outcomes (CLOs) Card
+              ProfCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Course Learning Outcomes (CLOs)',
+                            style: GoogleFonts.outfit(
+                                fontSize: 18, fontWeight: FontWeight.w700)),
+                        if (canManageCourse)
+                          TextButton.icon(
+                            icon: const Icon(Icons.add_rounded, size: 16),
+                            label: const Text('Add CLO', style: TextStyle(fontSize: 12)),
+                            onPressed: () => _showAddCloDialog(context, ref, course['id'] as int),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Defined learning outcomes mapped to assessments and HEC accreditation rubrics.',
+                      style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted),
+                    ),
+                    const SizedBox(height: 14),
+                    ref.watch(courseClosProvider(course['id'] as int)).when(
+                      loading: () => const LinearProgressIndicator(),
+                      error: (err, _) => Text(
+                        'Failed to load CLOs: $err',
+                        style: const TextStyle(color: AppColors.dangerRose, fontSize: 12),
+                      ),
+                      data: (clos) {
+                        if (clos.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Text(
+                              'No learning outcomes defined yet. Add outcomes to align with OBE criteria.',
+                              style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 13),
+                            ),
+                          );
+                        }
+                        return ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: clos.length,
+                          separatorBuilder: (_, __) => const Divider(color: AppColors.rule, height: 1),
+                          itemBuilder: (ctx, i) {
+                            final clo = clos[i];
+                            final cloId = clo['id'] as int;
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primaryIndigo.withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      clo['code'] ?? 'CLO',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primaryIndigo,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      clo['description'] ?? '',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        color: AppColors.inkPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                  if (canManageCourse)
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline_rounded,
+                                          size: 18, color: AppColors.statusCritical),
+                                      tooltip: 'Delete Outcome',
+                                      onPressed: () => _confirmDeleteClo(
+                                        context,
+                                        ref,
+                                        course['id'] as int,
+                                        cloId,
+                                        clo['code'] ?? 'CLO',
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Accreditation & Gradebook Reports Card
+              ProfCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Accreditation & Gradebook Exports',
+                        style: GoogleFonts.outfit(
+                            fontSize: 18, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Download official course dossier reports conforming to HEC / OBE accreditation benchmarks, or export complete semester CSV gradebook.',
+                      style: GoogleFonts.inter(
+                          fontSize: 13, color: AppColors.textMuted, height: 1.4),
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 10,
+                      children: [
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
+                          label: const Text('Download HEC Dossier (PDF)'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.signal,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          ),
+                          onPressed: () => _downloadHecDossierStatic(context, course['id'] as int),
+                        ),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.file_download_outlined, size: 16),
+                          label: const Text('Export Gradebook (CSV)'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          ),
+                          onPressed: () => _downloadCourseGradebookStatic(context, course['id'] as int),
+                        ),
+                      ],
                     ),
                   ],
                 ),

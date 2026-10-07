@@ -1,5 +1,4 @@
-"""ProfessorOS – Submission endpoints."""
-
+import json
 from pathlib import Path
 from typing import Annotated
 
@@ -10,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.core.dependencies import get_current_user, require_roles
+from app.core.config import get_settings
 from app.db.base import get_db
 from app.models.user import User
 from app.models.assignment import Assignment
@@ -21,9 +21,11 @@ from app.services.submission_service import SubmissionService
 from app.services.assignment_service import AssignmentService
 from app.services.course_service import CourseService
 from app.services.grading_pipeline import grade_submission_task, _grade_submission_core
+from app.services.document_ingestion import extract_text_from_submission_file
 
 router = APIRouter(tags=["Submissions"])
 MAX_SUBMISSION_BYTES = 25 * 1024 * 1024
+settings = get_settings()
 
 
 async def _verify_student_assignment(course_id: int, aid: int, user: User, db: AsyncSession) -> Assignment:
@@ -56,6 +58,7 @@ def _to_response(sub) -> SubmissionResponse:
         grader_name=sub.graded_by.full_name if sub.graded_by else None,
         submitted_at=sub.submitted_at,
         graded_at=sub.graded_at,
+        evaluation_metadata=sub.evaluation_metadata,
     )
 
 
@@ -101,6 +104,13 @@ async def submit_file(
     svc = SubmissionService(db)
     try:
         sub = await svc.save_file(aid, user.id, content, file.filename or "upload")
+        # Extract text from document (PDF, DOCX, Code, Text) so SpeedGrader and AI grading have it immediately
+        if sub.file_path:
+            extracted_txt = extract_text_from_submission_file(sub.file_path)
+            if extracted_txt:
+                sub.content = extracted_txt
+                await db.commit()
+                await db.refresh(sub)
         return _to_response(sub)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -226,17 +236,12 @@ async def trigger_ai_grading(
             {"name": "Clarity & Academic Quality", "weight": 20.0, "max_score": max_m * 0.2},
         ]
 
-    # Extract submission text content
+    # Extract submission text content (supports PDF, DOCX, Code, Text)
     content = submission.content or ""
     if not content and submission.file_path:
-        file_p = Path(submission.file_path)
-        if file_p.exists() and file_p.suffix.lower() in [".txt", ".py", ".md", ".java", ".c", ".cpp"]:
-            try:
-                content = file_p.read_text(encoding="utf-8", errors="replace")
-            except Exception:
-                pass
+        content = extract_text_from_submission_file(submission.file_path)
     if not content:
-        content = "Submission file received. (Binary or non-text document uploaded by student)."
+        content = f"Submission received (Filename: {submission.file_name or 'uploaded document'}). No readable text could be extracted."
 
     # Keep status pending while awaiting evaluation
     await db.commit()
@@ -251,9 +256,25 @@ async def trigger_ai_grading(
                 student_submission_content=content,
                 submission_type=submission.submission_type or "text",
             )
+            eval_model = getattr(settings, "MODEL_GRADING_PRIMARY", "deepseek-r1-distill-llama-70b")
             submission.score = evaluation.total_score
             submission.feedback = evaluation.student_feedback
             submission.status = "graded"
+            submission.graded_by_id = user.id
+            submission.graded_at = datetime.now(timezone.utc)
+            submission.evaluator_model = eval_model
+            submission.evaluation_metadata = json.dumps({
+                "total_score": evaluation.total_score,
+                "max_marks": evaluation.max_marks,
+                "percentage": evaluation.percentage,
+                "diagnostic_reasoning": evaluation.diagnostic_reasoning,
+                "criteria_evaluations": [c.model_dump() for c in evaluation.criteria_evaluations],
+                "needs_review": evaluation.needs_review,
+                "review_reasons": evaluation.review_reasons,
+                "student_feedback": evaluation.student_feedback,
+                "evaluator_model": eval_model,
+                "evaluation_timestamp": datetime.now(timezone.utc).isoformat(),
+            })
             await db.commit()
             return {
                 "status": submission.status,
@@ -264,8 +285,11 @@ async def trigger_ai_grading(
                 "percentage": evaluation.percentage,
                 "feedback": evaluation.student_feedback,
                 "diagnostic_reasoning": evaluation.diagnostic_reasoning,
-                "criteria": [c.model_dump() for c in evaluation.criteria_evaluations],
+                "criteria_evaluations": [c.model_dump() for c in evaluation.criteria_evaluations],
                 "needs_review": evaluation.needs_review,
+                "review_reasons": evaluation.review_reasons,
+                "evaluator_model": eval_model,
+                "evaluation_timestamp": datetime.now(timezone.utc).isoformat(),
                 "message": "AI grading completed successfully with DeepSeek-R1-Distill-70B.",
             }
         except Exception as e:
@@ -348,17 +372,12 @@ async def batch_ai_grade_submissions(
     graded_count = 0
     errors = []
     for sub in pending_subs:
-        # Extract submission text content
+        # Extract submission text content (PDF, DOCX, Code, Text)
         content = sub.content or ""
         if not content and sub.file_path:
-            file_p = Path(sub.file_path)
-            if file_p.exists() and file_p.suffix.lower() in [".txt", ".py", ".md", ".java", ".c", ".cpp"]:
-                try:
-                    content = file_p.read_text(encoding="utf-8", errors="replace")
-                except Exception:
-                    pass
+            content = extract_text_from_submission_file(sub.file_path)
         if not content:
-            content = "Submission file received. (Binary or non-text document uploaded by student)."
+            content = f"Submission received (Filename: {sub.file_name or 'uploaded document'})."
 
         try:
             eval_res = _grade_submission_core(
@@ -369,9 +388,24 @@ async def batch_ai_grade_submissions(
                 student_submission_content=content,
                 submission_type=sub.submission_type or "text",
             )
+            eval_model = getattr(settings, "MODEL_GRADING_PRIMARY", "deepseek-r1-distill-llama-70b")
             sub.score = eval_res.total_score
             sub.feedback = eval_res.student_feedback
             sub.status = "graded"
+            sub.graded_by_id = user.id
+            sub.graded_at = datetime.now(timezone.utc)
+            sub.evaluator_model = eval_model
+            sub.evaluation_metadata = json.dumps({
+                "total_score": eval_res.total_score,
+                "max_marks": eval_res.max_marks,
+                "percentage": eval_res.percentage,
+                "diagnostic_reasoning": eval_res.diagnostic_reasoning,
+                "criteria_evaluations": [c.model_dump() for c in eval_res.criteria_evaluations],
+                "needs_review": eval_res.needs_review,
+                "review_reasons": eval_res.review_reasons,
+                "evaluator_model": eval_model,
+                "evaluation_timestamp": datetime.now(timezone.utc).isoformat(),
+            })
             graded_count += 1
         except Exception as e:
             logger.error("Batch grading failed for submission %d: %s", sub.id, e)

@@ -76,6 +76,10 @@ class CourseRepository {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<void> deleteClo(int courseId, int cloId) async {
+    await _dio.delete('${ApiConstants.courseClos(courseId)}/$cloId');
+  }
+
   Future<Map<String, dynamic>> listAssignments(int courseId,
       {String? status, int page = 1, int pageSize = 50}) async {
     final params = <String, dynamic>{};

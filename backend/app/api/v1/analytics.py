@@ -357,18 +357,19 @@ async def export_analytics_pdf(
                 </tr>
             </thead>
             <tbody>"""
-    criteria = snapshot.criterion_scores if snapshot.criterion_scores else {
-        "Problem Analysis": 84.0,
-        "Algorithm Design": 78.5,
-        "Implementation": 90.0,
-        "HEC Standard Compliance": 82.0,
-    }
-    for c_name, c_score in criteria.items():
-        html_content += f"""
+    criteria = snapshot.criterion_scores if snapshot and snapshot.criterion_scores else {}
+    if not criteria:
+        html_content += """
             <tr>
-                <td>{c_name}</td>
-                <td>{c_score}%</td>
+                <td colspan="2" style="text-align: center; color: #64748B; padding: 15px;">No rubric criteria evaluations recorded yet for this cohort.</td>
             </tr>"""
+    else:
+        for c_name, c_score in criteria.items():
+            html_content += f"""
+                <tr>
+                    <td>{c_name}</td>
+                    <td>{c_score}%</td>
+                </tr>"""
     html_content += f"""
             </tbody>
         </table>

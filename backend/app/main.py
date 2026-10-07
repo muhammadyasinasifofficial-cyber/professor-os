@@ -70,6 +70,23 @@ async def lifespan(app: FastAPI):
                 await conn.execute(text("ALTER TABLE users ADD COLUMN token_valid_after TIMESTAMP WITH TIME ZONE NULL"))
         except Exception as e:
             print(f"[STARTUP WARN] Auto-migration for token_valid_after failed: {e}")
+
+        # Auto-migration for submissions columns (evaluation_metadata, evaluator_model)
+        try:
+            from sqlalchemy import text
+            res = await conn.execute(
+                text("SELECT column_name FROM information_schema.columns WHERE table_name='submissions' AND column_name='evaluation_metadata'")
+            )
+            if not res.fetchone():
+                await conn.execute(text("ALTER TABLE submissions ADD COLUMN evaluation_metadata TEXT NULL"))
+
+            res_model = await conn.execute(
+                text("SELECT column_name FROM information_schema.columns WHERE table_name='submissions' AND column_name='evaluator_model'")
+            )
+            if not res_model.fetchone():
+                await conn.execute(text("ALTER TABLE submissions ADD COLUMN evaluator_model VARCHAR(255) NULL"))
+        except Exception as e:
+            print(f"[STARTUP WARN] Auto-migration for submissions columns failed: {e}")
             
     # Auto-seed admin account and migrate legacy accounts to professor role
     try:
@@ -133,7 +150,7 @@ _origins = [o.strip() for o in _settings.ALLOWED_ORIGINS.split(",")]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins,
-    allow_origin_regex=r"^https://.*\.up\.railway\.app$",
+    allow_origin_regex=r"^https://.*(?:\.up)?\.railway\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

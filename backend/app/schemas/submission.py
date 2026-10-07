@@ -32,6 +32,7 @@ class SubmissionResponse(BaseModel):
     grader_name: Optional[str] = None
     submitted_at: datetime
     graded_at: Optional[datetime] = None
+    evaluation_metadata: Optional[str] = None  # JSON blob of XAI grading data
 
     model_config = {"from_attributes": True}
 

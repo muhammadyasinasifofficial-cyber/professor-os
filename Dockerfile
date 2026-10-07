@@ -14,10 +14,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY requirements.txt .
+# Install Python backend dependencies
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Copy complete backend code including static web assets
+COPY backend/ .
 
 ENV PORT=8000
 EXPOSE 8000

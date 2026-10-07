@@ -2,7 +2,7 @@
 
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, require_roles
@@ -426,4 +426,70 @@ async def delete_assignment_rubric(
     await db.delete(rubric)
     await db.commit()
     return {"message": "Rubric deleted."}
+
+
+@router.get("/courses/{course_id}/assignments/{aid}/export-csv")
+async def export_assignment_grades_csv(
+    course_id: int,
+    aid: int,
+    user: Annotated[User, Depends(require_roles("professor", "admin", "ta"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Export all submissions and grades for an assignment as CSV."""
+    from sqlalchemy import select
+    from app.services.submission_service import SubmissionService
+    from app.models.exam_attempt import ExamAttempt
+    import csv
+    import io
+
+    course_svc = CourseService(db)
+    await course_svc.verify_course_management_access(course_id, user)
+
+    svc = AssignmentService(db)
+    assignment = await svc.get_assignment(aid)
+    if assignment.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Assignment not found in this course.")
+
+    sub_svc = SubmissionService(db)
+    submissions = await sub_svc.list_submissions(aid)
+
+    attempts_res = await db.execute(
+        select(ExamAttempt).where(ExamAttempt.assignment_id == aid)
+    )
+    attempts_map = {a.student_id: a for a in attempts_res.scalars().all()}
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Student ID", "Student Name", "Email", "Submission Status",
+        "Score", "Max Marks", "Percentage", "Submitted At", "Graded At",
+        "Graded By", "Tab Switches", "Anti-Cheat Flag", "Flag Reason"
+    ])
+    for s in submissions:
+        student_name = s.student.full_name if s.student else f"Student #{s.student_id}"
+        email = s.student.email if s.student else ""
+        max_m = float(assignment.max_marks or 100.0)
+        pct = round((s.score / max_m * 100.0), 2) if s.score is not None else ""
+        grader = s.graded_by.full_name if s.graded_by else ""
+        attempt = attempts_map.get(s.student_id)
+        switches = attempt.tab_switch_count if attempt else 0
+        is_flagged = "FLAGGED" if (attempt and attempt.is_flagged) else "CLEAN"
+        flag_reason = attempt.flag_reason if attempt else ""
+
+        writer.writerow([
+            s.student_id, student_name, email, s.status,
+            s.score if s.score is not None else "",
+            max_m, pct,
+            s.submitted_at.isoformat() if s.submitted_at else "",
+            s.graded_at.isoformat() if s.graded_at else "",
+            grader, switches, is_flagged, flag_reason
+        ])
+
+    csv_bytes = output.getvalue().encode("utf-8")
+    clean_title = "".join(c if c.isalnum() else "_" for c in assignment.title)[:30]
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{clean_title}_grades.csv"'},
+    )
 

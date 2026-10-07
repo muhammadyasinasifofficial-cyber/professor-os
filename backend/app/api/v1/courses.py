@@ -3,7 +3,7 @@
 import asyncio
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.llm_config import get_llm_client, LLMPipeline
@@ -447,5 +447,72 @@ async def chat_with_course(
         session_id=body.session_id,
         intent=intent_detected,
         course_id=course_id,
+    )
+
+
+@router.get("/{course_id}/gradebook/csv")
+async def export_course_gradebook_csv(
+    course_id: int,
+    user: Annotated[User, Depends(require_roles("professor", "admin"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Export complete semester gradebook for a course as CSV."""
+    from sqlalchemy import select
+    from app.models.assignment import Assignment
+    from app.models.submission import Submission
+    from app.services.analytics_service import compute_hec_grade
+    import csv
+    import io
+
+    course_svc = CourseService(db)
+    course = await course_svc.verify_course_management_access(course_id, user)
+    enrollments = await course_svc.list_enrollments(course_id)
+    students = [e for e in enrollments if (getattr(e, "role", "student") == "student")]
+
+    assign_res = await db.execute(
+        select(Assignment).where(Assignment.course_id == course_id).order_by(Assignment.id.asc())
+    )
+    assignments = assign_res.scalars().all()
+
+    subs_res = await db.execute(
+        select(Submission).join(Assignment, Assignment.id == Submission.assignment_id).where(Assignment.course_id == course_id)
+    )
+    sub_map = {(s.student_id, s.assignment_id): s.score for s in subs_res.scalars().all()}
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    header = ["Student ID", "Student Name", "Email"]
+    for a in assignments:
+        header.append(f"{a.title} (Max {a.max_marks})")
+    header.extend(["Total Earned", "Total Possible", "Overall Percentage", "HEC Letter Grade"])
+    writer.writerow(header)
+
+    for e in students:
+        s_user = e.user
+        s_name = s_user.full_name if s_user else f"Student #{e.user_id}"
+        s_email = s_user.email if s_user else ""
+        row = [e.user_id, s_name, s_email]
+        total_earned = 0.0
+        total_possible = 0.0
+        for a in assignments:
+            score = sub_map.get((e.user_id, a.id))
+            if score is not None:
+                row.append(score)
+                total_earned += score
+            else:
+                row.append("-")
+            total_possible += float(a.max_marks or 100.0)
+
+        overall_pct = round((total_earned / total_possible * 100.0), 2) if total_possible > 0 else 0.0
+        hec_grade, _ = compute_hec_grade(overall_pct)
+        row.extend([round(total_earned, 2), round(total_possible, 2), overall_pct, hec_grade])
+        writer.writerow(row)
+
+    csv_bytes = output.getvalue().encode("utf-8")
+    clean_code = "".join(c if c.isalnum() else "_" for c in course.code)
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="Course_{clean_code}_Gradebook.csv"'},
     )
 

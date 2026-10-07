@@ -60,6 +60,9 @@ class Submission(Base):
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     graded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    evaluation_metadata: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True
+    )  # JSON blob of XAI grading data
 
     # ── Relationships ─────────────────────────────────
     assignment = relationship("Assignment", back_populates="submissions")

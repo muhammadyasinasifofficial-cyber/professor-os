@@ -18,19 +18,26 @@ class ProfessorOSApp extends ConsumerStatefulWidget {
 class _ProfessorOSAppState extends ConsumerState<ProfessorOSApp> {
   Timer? _timer;
   static const _inactivityTimeout = Duration(minutes: 30);
+  DateTime _lastActivityTime = DateTime.now();
 
   @override
   void initState() {
     super.initState();
-    _resetTimer();
+    _resetTimer(force: true);
   }
 
-  void _resetTimer() {
+  void _resetTimer({bool force = false}) {
+    final now = DateTime.now();
+    if (!force && _timer != null && now.difference(_lastActivityTime).inSeconds < 10) {
+      return;
+    }
+    _lastActivityTime = now;
     _timer?.cancel();
     _timer = Timer(_inactivityTimeout, _logOutUser);
   }
 
   void _logOutUser() {
+    if (!mounted) return;
     final authNotifier = ref.read(authProvider.notifier);
     if (authNotifier.isAuthenticated) {
       authNotifier.logout();

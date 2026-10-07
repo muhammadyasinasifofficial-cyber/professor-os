@@ -128,24 +128,35 @@ class AnalyticsService:
         return deduped
 
     async def compute_analytics_from_db(self, course_id: int) -> Optional[AnalyticsSnapshot]:
-        """Compute analytics from actual graded submission scores stored in the DB."""
+        """Compute analytics from actual graded submission scores stored in the DB, normalized by max_marks."""
         from sqlalchemy import text
         score_result = await self.db.execute(
             text(
-                "SELECT s.score, s.student_id FROM submissions s "
+                "SELECT s.score, a.max_marks, s.student_id FROM submissions s "
                 "JOIN assignments a ON a.id = s.assignment_id "
                 "WHERE a.course_id = :cid AND s.status = 'graded' AND s.score IS NOT NULL"
             ),
             {"cid": course_id},
         )
         rows = score_result.fetchall()
-        scores = [float(r[0]) for r in rows]
-        student_scores = {int(r[1]): float(r[0]) for r in rows}
+        scores = []
+        student_scores_map: Dict[int, List[float]] = {}
+        for r in rows:
+            raw_score = float(r[0])
+            max_m = float(r[1]) if r[1] and float(r[1]) > 0 else 100.0
+            pct = min(100.0, max(0.0, (raw_score / max_m) * 100.0))
+            scores.append(round(pct, 2))
+            sid = int(r[2])
+            student_scores_map.setdefault(sid, []).append(pct)
 
         snapshot = await self.compute_analytics(course_id, scores)
 
-        # Detect at-risk students using course threshold
-        from sqlalchemy import select as sa_select
+        # Detect at-risk students using student course average across assignments
+        student_scores = {
+            sid: round(statistics.mean(pct_list), 2)
+            for sid, pct_list in student_scores_map.items()
+        }
+
         from app.models.course import Course
         course = await self.db.get(Course, course_id)
         threshold = course.at_risk_threshold if course else 50.0

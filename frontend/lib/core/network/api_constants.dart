@@ -123,4 +123,8 @@ class ApiConstants {
   static String quizAttemptResult(String attemptId) => '/attempts/$attemptId/result';
   static String cloAttainment(int courseId) => '/courses/$courseId/clo-attainment';
   static String hecDossier(int courseId) => '/courses/$courseId/hec-dossier';
+  static String assignmentExportCsv(int courseId, int aid) =>
+      '/courses/$courseId/assignments/$aid/export-csv';
+  static String courseGradebookCsv(int courseId) =>
+      '/courses/$courseId/gradebook/csv';
 }

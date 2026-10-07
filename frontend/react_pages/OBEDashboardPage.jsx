@@ -335,11 +335,11 @@ export default function OBEDashboardPage({ courseId = 4 }) {
                 <div className="flex items-center gap-3 text-xs">
                   <span className="flex items-center gap-1.5 text-slate-600">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                    Application & Analysis (&ge;30%)
+                    Application & Analysis (≥30%)
                   </span>
                   <span className="flex items-center gap-1.5 text-slate-600">
                     <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
-                    Recall (&le;30%)
+                    Recall (≤30%)
                   </span>
                 </div>
               </div>
@@ -359,7 +359,7 @@ export default function OBEDashboardPage({ courseId = 4 }) {
                         <span className="text-[10px] text-slate-400">{info.label}</span>
                       </div>
                       <div className="text-xl font-bold font-mono text-slate-800 mb-2">
-                        {parseFloat(pct).toFixed(0)}%
+                        {pct.toFixed(0)}%
                       </div>
                       <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
                         <div

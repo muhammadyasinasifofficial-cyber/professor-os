@@ -60,10 +60,14 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
   bool _isFlagged = false;
   bool _showingWarning = false;
 
+  // Biometric fallback tracking — avoids permanently locking a student
+  // out when the sensor fails repeatedly.
+  int _biometricFailures = 0;
+
   // Submission content
   final _textCtrl = TextEditingController();
   final _codeCtrl = TextEditingController();
-  int? _mcqSelected;
+  final Map<int, int> _mcqAnswers = {};
   String? _selectedFileName;
   List<int>? _selectedFileBytes;
 
@@ -110,10 +114,48 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
         localizedReason: 'Verify your identity to start the exam',
         options: const AuthenticationOptions(biometricOnly: false),
       );
-      if (mounted) setState(() => _biometricPassed = authenticated);
-      if (!authenticated && mounted) {
-        setState(
-            () => _error = 'Identity verification failed. Please try again.');
+      if (authenticated) {
+        if (mounted) setState(() => _biometricPassed = true);
+        return;
+      }
+      // A failed read must not permanently lock the student out of the
+      // exam. After several failures offer a supervised fallback so a
+      // broken sensor or a cancelled prompt cannot block the assessment.
+      _biometricFailures++;
+      if (_biometricFailures >= 3 && mounted) {
+        final proceed = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            backgroundColor: AppColors.bgSurface,
+            title: Text('Cannot verify identity',
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+            content: const Text(
+              'Biometric verification failed several times. You can continue, but your attempt will be marked as unverified and may be reviewed by your instructor.',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Try Again'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryIndigo),
+                child: const Text('Continue Anyway',
+                    style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        );
+        if (proceed == true && mounted) {
+          setState(() => _biometricPassed = true);
+        }
+        return;
+      }
+      if (mounted) {
+        setState(() =>
+            _error = 'Identity verification failed. Please try again.');
       }
     } catch (_) {
       // local_auth not available (e.g., web) — skip
@@ -127,12 +169,23 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
       final result =
           await _repo.startExam(widget.courseId, widget.assignmentId);
       final timeLimit = result['time_limit_minutes'] as int?;
+      // Sync the authoritative server state so the local timer and
+      // anti-cheat counters cannot drift after a resume or page reload.
+      final remaining = result['remaining_seconds'] as int?;
+      final serverSwitches = result['tab_switch_count'] as int?;
       setState(() {
         _examStarted = true;
-        _remainingSeconds = (timeLimit ?? 0) * 60;
+        _remainingSeconds = remaining ?? (timeLimit ?? 0) * 60;
+        if (serverSwitches != null && serverSwitches > _tabSwitchCount) {
+          _tabSwitchCount = serverSwitches;
+        }
+        if (result['is_flagged'] == true) _isFlagged = true;
       });
-      if (timeLimit != null && timeLimit > 0) {
+      if (_remainingSeconds > 0) {
         _startTimer();
+      } else if (timeLimit != null && timeLimit > 0) {
+        // Resumed a session whose time has already expired.
+        _autoSubmit();
       }
     } catch (e) {
       if (mounted) setState(() => _error = ErrorParser.parse(e));
@@ -155,8 +208,7 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
   }
 
   Future<void> _autoSubmit() async {
-    if (_submitted || _submitting) return;
-    // Fill in dummy content if empty so submission goes through
+    if (!_examStarted || _submitted || _submitting) return;
     await _submitExam(autoSubmitted: true);
   }
 
@@ -178,14 +230,25 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
       _showingWarning = true;
     });
 
-    // Report to backend
+    // Report to backend and reconcile with the server-side counter so
+    // the student view and the instructor view stay in sync.
     try {
       final result =
           await _repo.flagExamSwitch(widget.courseId, widget.assignmentId);
-      if (result['is_flagged'] == true) {
-        setState(() => _isFlagged = true);
+      final serverSwitches = result['tab_switch_count'] as int?;
+      if (mounted) {
+        setState(() {
+          if (serverSwitches != null && serverSwitches >= _tabSwitchCount) {
+            _tabSwitchCount = serverSwitches;
+          }
+          if (result['is_flagged'] == true) _isFlagged = true;
+        });
       }
-    } catch (_) {}
+    } catch (_) {
+      // Network failure: the local count was already incremented above,
+      // so the student still sees the warning. The server counter will
+      // catch up on the next successful flag call.
+    }
 
     // Show warning overlay
     if (mounted) {
@@ -258,7 +321,11 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
     _timer?.cancel();
 
     try {
-      // Submit the actual answer content
+      // Submit the actual answer content. On auto-submit (time expiry)
+      // we still create a submission record — even when empty — so the
+      // attempt has a gradeable artifact and the instructor can see the
+      // student ran out of time instead of the answer silently vanishing.
+      final allowEmpty = autoSubmitted;
       switch (widget.assignmentType) {
         case 'file':
           if (_selectedFileBytes != null && _selectedFileName != null) {
@@ -271,8 +338,8 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
           }
           break;
         case 'programming':
-          final code = _codeCtrl.text.trim();
-          if (code.isNotEmpty) {
+          final code = _codeCtrl.text;
+          if (code.trim().isNotEmpty || allowEmpty) {
             await _repo.submitAssignment(
               widget.courseId,
               widget.assignmentId,
@@ -281,19 +348,21 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
           }
           break;
         case 'mcq':
-          if (_mcqSelected != null) {
-            final optionLetter =
-                ['A', 'B', 'C', 'D', 'E'][(_mcqSelected! - 1).clamp(0, 4)];
+          final content = _serializeMcqAnswers();
+          if (content != null || allowEmpty) {
             await _repo.submitAssignment(
               widget.courseId,
               widget.assignmentId,
-              {'submission_type': 'mcq', 'content': 'Option $optionLetter'},
+              {
+                'submission_type': 'mcq',
+                'content': content ?? 'No answers provided.',
+              },
             );
           }
           break;
         default: // text
-          final text = _textCtrl.text.trim();
-          if (text.isNotEmpty) {
+          final text = _textCtrl.text;
+          if (text.trim().isNotEmpty || allowEmpty) {
             await _repo.submitAssignment(
               widget.courseId,
               widget.assignmentId,
@@ -702,6 +771,31 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
     }
   }
 
+  // Serializes the selected MCQ answers into the submission content.
+  // Keeps the legacy "Option X" format for single-question quizzes so
+  // existing grading behaviour is unchanged, and switches to a clear
+  // per-question listing for multi-question quizzes.
+  String? _serializeMcqAnswers() {
+    if (_mcqAnswers.isEmpty) return null;
+    if (_mcqAnswers.length == 1) {
+      return 'Option ${_optionLetter(_mcqAnswers.values.first)}';
+    }
+    final buffer = StringBuffer();
+    final keys = _mcqAnswers.keys.toList()
+      ..sort();
+    for (final k in keys) {
+      buffer.writeln(
+          'Question ${k + 1}: Option ${_optionLetter(_mcqAnswers[k]!)}');
+    }
+    return buffer.toString().trim();
+  }
+
+  String _optionLetter(int optionValue) {
+    const letters = ['A', 'B', 'C', 'D', 'E'];
+    final idx = (optionValue - 1).clamp(0, letters.length - 1);
+    return letters[idx];
+  }
+
   Widget _buildTextSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -764,19 +858,29 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
     final desc = widget.description ?? '';
     final structuredQuestions = parseMcqDescription(desc);
     if (structuredQuestions.isNotEmpty) {
-      final question = structuredQuestions.first;
-      final options = (question['options'] as List?)
-              ?.map((option) => option.toString())
-              .toList() ??
-          const <String>[];
+      // Render every structured question — not just the first — so a
+      // multi-question quiz is fully answerable.
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(question['question'].toString(),
-              style: GoogleFonts.outfit(
-                  fontSize: 16, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 12),
-          _mcqOptions(options),
+          for (var i = 0; i < structuredQuestions.length; i++) ...[
+            Text(structuredQuestions[i]['question'].toString(),
+                style: GoogleFonts.outfit(
+                    fontSize: 16, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 12),
+            _mcqOptions(
+              (structuredQuestions[i]['options'] as List?)
+                      ?.map((o) => o.toString())
+                      .toList() ??
+                  const <String>[],
+              i,
+            ),
+            if (i < structuredQuestions.length - 1)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Divider(color: AppColors.border),
+              ),
+          ],
         ],
       );
     }
@@ -789,20 +893,42 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
       final trimmed = line.trim();
       if (RegExp(r'^[A-Ea-e][).]').hasMatch(trimmed)) {
         optionLines.add(trimmed);
-      } else {
+      } else if (trimmed.isNotEmpty) {
         questionLines.add(trimmed);
       }
     }
-    // If no structured options found, show as free-response radio (generic)
+
+    // Never fabricate placeholder options — that would test the student
+    // on nonsense. If no real options were parsed, fall back to a
+    // free-text answer so the student can still respond.
     if (optionLines.isEmpty) {
-      optionLines
-          .addAll(['A) Option A', 'B) Option B', 'C) Option C', 'D) Option D']);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (questionLines.isNotEmpty)
+            Text(questionLines.join('\n'),
+                style: GoogleFonts.outfit(
+                    fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 12),
+          _buildTextSection(),
+        ],
+      );
     }
 
-    return _mcqOptions(optionLines);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (questionLines.isNotEmpty)
+          Text(questionLines.join('\n'),
+              style: GoogleFonts.outfit(
+                  fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 12),
+        _mcqOptions(optionLines, 0),
+      ],
+    );
   }
 
-  Widget _mcqOptions(List<String> optionLines) {
+  Widget _mcqOptions(List<String> optionLines, int questionIndex) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -827,8 +953,9 @@ class _ExamScreenState extends ConsumerState<ExamScreen>
               final optionValue = i + 1;
               return RadioListTile<int>(
                 value: optionValue,
-                groupValue: _mcqSelected,
-                onChanged: (v) => setState(() => _mcqSelected = v),
+                groupValue: _mcqAnswers[questionIndex],
+                onChanged: (v) =>
+                    setState(() => _mcqAnswers[questionIndex] = v!),
                 title: Text(optionText,
                     style: GoogleFonts.inter(
                         fontSize: 14, color: AppColors.textPrimary)),

@@ -191,7 +191,6 @@ class SubmissionService:
         """Pull real scores from DB and refresh the course analytics snapshot."""
         try:
             from sqlalchemy import text
-            # Get course_id for this assignment
             result = await self.db.execute(
                 text("SELECT course_id FROM assignments WHERE id = :aid"),
                 {"aid": assignment_id},
@@ -201,36 +200,10 @@ class SubmissionService:
                 return
             course_id = row[0]
 
-            # Pull all graded submission scores for the course
-            score_result = await self.db.execute(
-                text(
-                    "SELECT s.score, s.student_id FROM submissions s "
-                    "JOIN assignments a ON a.id = s.assignment_id "
-                    "WHERE a.course_id = :cid AND s.status = 'graded' AND s.score IS NOT NULL"
-                ),
-                {"cid": course_id},
-            )
-            rows = score_result.fetchall()
-            if not rows:
-                return
-
-            scores = [float(r[0]) for r in rows]
-            student_scores = {int(r[1]): float(r[0]) for r in rows}
-
             from app.services.analytics_service import AnalyticsService
             from app.services.cache_service import cache_delete
             analytics_svc = AnalyticsService(self.db)
-            course = None
-            try:
-                from app.services.course_service import CourseService
-                course = await CourseService(self.db).get_course(course_id)
-            except Exception:
-                pass
-
-            threshold = course.at_risk_threshold if course else 50.0
-            await analytics_svc.compute_analytics(course_id, scores)
-            await analytics_svc.detect_at_risk_students(course_id, threshold, student_scores)
-            # Invalidate cache
+            await analytics_svc.compute_analytics_from_db(course_id)
             await cache_delete(f"analytics:{course_id}")
         except Exception as e:
             print(f"[ANALYTICS] Recompute failed: {e}")

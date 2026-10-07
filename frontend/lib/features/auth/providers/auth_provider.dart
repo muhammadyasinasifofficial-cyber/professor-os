@@ -23,10 +23,14 @@ class AuthNotifier extends AsyncNotifier<Map<String, dynamic>?> {
 
   Future<void> login(String email, String password) async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    try {
       await _repo.login(email, password);
-      return await _repo.getMe();
-    });
+      final user = await _repo.getMe();
+      state = AsyncData(user);
+    } catch (e, st) {
+      await DioClient.clearTokens();
+      state = AsyncError(e, st);
+    }
   }
 
   Future<void> logout() async {
@@ -35,7 +39,13 @@ class AuthNotifier extends AsyncNotifier<Map<String, dynamic>?> {
   }
 
   Future<void> refreshUser() async {
-    state = await AsyncValue.guard(() => _repo.getMe());
+    try {
+      final user = await _repo.getMe();
+      state = AsyncData(user);
+    } catch (_) {
+      await DioClient.clearTokens();
+      state = const AsyncData(null);
+    }
   }
 
   bool get isAuthenticated => state.valueOrNull != null;

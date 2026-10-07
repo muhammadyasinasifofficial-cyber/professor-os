@@ -79,21 +79,21 @@ class LLMClient:
                 primary_model=grading_primary,
                 fallback_model=getattr(self.settings, "MODEL_GRADING_FALLBACK", "anthropic/claude-haiku-4.5"),
                 temperature=0.1,  # Low temperature for deterministic, rubric-faithful scoring
-                max_tokens=750,
+                max_tokens=2048,  # Ample room for CoT reasoning + multi-criteria evaluation JSON
             ),
             LLMPipeline.RAG: PipelineSpec(
                 pipeline=LLMPipeline.RAG,
                 primary_model=getattr(self.settings, "MODEL_RAG_PRIMARY", "qwen/qwen3.8-27b"),
                 fallback_model=getattr(self.settings, "MODEL_RAG_FALLBACK", "anthropic/claude-haiku-4.5"),
                 temperature=0.2,
-                max_tokens=750,
+                max_tokens=1024,
             ),
             LLMPipeline.QUESTION_GEN: PipelineSpec(
                 pipeline=LLMPipeline.QUESTION_GEN,
                 primary_model=getattr(self.settings, "MODEL_QUESTION_GEN_PRIMARY", "qwen/qwen3.8-27b"),
                 fallback_model=getattr(self.settings, "MODEL_QUESTION_GEN_FALLBACK", "anthropic/claude-haiku-4.5"),
                 temperature=0.4,  # Moderate temperature for creative distractors while maintaining Bloom alignment
-                max_tokens=750,
+                max_tokens=1500,
             ),
         }
 

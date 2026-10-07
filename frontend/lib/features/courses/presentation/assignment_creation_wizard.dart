@@ -33,7 +33,10 @@ class _WizardState extends ConsumerState<AssignmentCreationWizard> {
   // Step 2: Details
   final _formKey = GlobalKey<FormState>();
   final _titleCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
   final _marksCtrl = TextEditingController(text: '100');
+  final _timeLimitCtrl = TextEditingController();
+  DateTime? _deadline;
   final _quillCtrl = quill.QuillController.basic();
   String _category =
       'assignments'; // 'quizzes', 'assignments', 'midterm', 'final', 'project'
@@ -87,6 +90,61 @@ class _WizardState extends ConsumerState<AssignmentCreationWizard> {
 
   int get _totalSteps => _stepFlow.length;
 
+  Future<void> _showCreateCloDialog() async {
+    final codeCtrl = TextEditingController(text: 'CLO-');
+    final descCtrl = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Add Course Learning Outcome', style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: codeCtrl,
+              decoration: const InputDecoration(labelText: 'CLO Code', hintText: 'e.g. CLO-2'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descCtrl,
+              maxLines: 2,
+              decoration: const InputDecoration(labelText: 'Description', hintText: 'e.g. Design relational database schemas'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final code = codeCtrl.text.trim();
+              final desc = descCtrl.text.trim();
+              if (code.isEmpty || desc.isEmpty) return;
+              try {
+                final created = await CourseRepository().createClo(widget.courseId, code, desc);
+                if (mounted) {
+                  setState(() {
+                    _selectedCloIds.add(created['id'] as int);
+                  });
+                  ref.invalidate(courseClosProvider(widget.courseId));
+                  Navigator.pop(ctx);
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(ErrorParser.parse(e)),
+                    backgroundColor: AppColors.dangerRose,
+                  ));
+                }
+              }
+            },
+            child: const Text('Add CLO'),
+          ),
+        ],
+      ),
+    );
+  }
+
+
   Future<void> _publish(bool asDraft) async {
     // If no CLO was selected manually, backend will automatically link the course CLO or seed CLO-1.
 
@@ -115,16 +173,22 @@ class _WizardState extends ConsumerState<AssignmentCreationWizard> {
           mappedType = 'text';
       }
 
+      String descriptionPayload = _descCtrl.text.trim();
+      if (_type == 'mcq' && _mcqQuestions.isNotEmpty) {
+        descriptionPayload = jsonEncode({
+          'type': 'mcq',
+          'instructions': _descCtrl.text.trim(),
+          'questions': _mcqQuestions.map((q) => q.toJson()).toList(),
+        });
+      }
+
       final assignData = {
         'title': _titleCtrl.text.trim(),
-        'description': (_type == 'mcq' && _mcqQuestions.isNotEmpty)
-            ? jsonEncode({
-                'type': 'mcq',
-                'questions': _mcqQuestions.map((q) => q.toJson()).toList(),
-              })
-            : '',
+        'description': descriptionPayload,
         'type': mappedType,
         'max_marks': double.parse(_marksCtrl.text),
+        'deadline': _deadline?.toUtc().toIso8601String(),
+        'time_limit_minutes': int.tryParse(_timeLimitCtrl.text.trim()),
         'allow_late': _allowLate,
         'late_penalty_per_day': _latePenalty,
         'max_penalty_cap': _maxPenaltyCap,
@@ -174,7 +238,9 @@ class _WizardState extends ConsumerState<AssignmentCreationWizard> {
   @override
   void dispose() {
     _titleCtrl.dispose();
+    _descCtrl.dispose();
     _marksCtrl.dispose();
+    _timeLimitCtrl.dispose();
     _quillCtrl.dispose();
     for (var c in _criteria) {
       c.dispose();
@@ -623,6 +689,86 @@ class _WizardState extends ConsumerState<AssignmentCreationWizard> {
                       hintText: 'e.g. Midterm Lab Task 1 - Recursion'),
                 ),
                 const SizedBox(height: 18),
+                TextFormField(
+                  controller: _descCtrl,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Assignment Description & Instructions',
+                    hintText: 'Enter assignment prompt, instructions, problem statements, or guidelines...',
+                    alignLabelWithHint: true,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: InkWell(
+                        onTap: () async {
+                          final now = DateTime.now();
+                          final pickedDate = await showDatePicker(
+                            context: context,
+                            initialDate: _deadline ?? now.add(const Duration(days: 7)),
+                            firstDate: now.subtract(const Duration(days: 1)),
+                            lastDate: now.add(const Duration(days: 365)),
+                          );
+                          if (pickedDate != null && mounted) {
+                            final pickedTime = await showTimePicker(
+                              context: context,
+                              initialTime: _deadline != null
+                                  ? TimeOfDay(hour: _deadline!.hour, minute: _deadline!.minute)
+                                  : const TimeOfDay(hour: 23, minute: 59),
+                            );
+                            if (pickedTime != null && mounted) {
+                              setState(() {
+                                _deadline = DateTime(
+                                  pickedDate.year,
+                                  pickedDate.month,
+                                  pickedDate.day,
+                                  pickedTime.hour,
+                                  pickedTime.minute,
+                                );
+                              });
+                            }
+                          }
+                        },
+                        child: InputDecorator(
+                          decoration: InputDecoration(
+                            labelText: 'Due Date & Time (Optional)',
+                            suffixIcon: _deadline != null
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear_rounded, size: 18),
+                                    onPressed: () => setState(() => _deadline = null),
+                                  )
+                                : const Icon(Icons.calendar_today_rounded, size: 18),
+                          ),
+                          child: Text(
+                            _deadline == null
+                                ? 'No deadline (untimed / open)'
+                                : '${_deadline!.year}-${_deadline!.month.toString().padLeft(2, '0')}-${_deadline!.day.toString().padLeft(2, '0')} ${_deadline!.hour.toString().padLeft(2, '0')}:${_deadline!.minute.toString().padLeft(2, '0')}',
+                            style: GoogleFonts.inter(
+                              color: _deadline == null ? AppColors.textMuted : AppColors.textPrimary,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 1,
+                      child: TextFormField(
+                        controller: _timeLimitCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Time Limit (Mins)',
+                          hintText: 'e.g. 60 (optional)',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final category = DropdownButtonFormField<String>(
@@ -739,11 +885,21 @@ class _WizardState extends ConsumerState<AssignmentCreationWizard> {
                   ),
                 ],
                 const SizedBox(height: 20),
-                Text('Linked Course Learning Outcomes (CLOs)*',
-                    style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        color: AppColors.textPrimary)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Linked Course Learning Outcomes (CLOs)*',
+                        style: GoogleFonts.inter(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: AppColors.textPrimary)),
+                    TextButton.icon(
+                      icon: const Icon(Icons.add_rounded, size: 16),
+                      label: const Text('Add CLO', style: TextStyle(fontSize: 12)),
+                      onPressed: () => _showCreateCloDialog(),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 6),
                 ref.watch(courseClosProvider(widget.courseId)).when(
                       loading: () => const LinearProgressIndicator(),

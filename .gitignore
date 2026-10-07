@@ -46,3 +46,7 @@ fish-speech/
 fish-speech-main.zip
 _qa_*/
 _qa_*/**
+backend/data/uploads/
+brag-output/
+
+.agents/
